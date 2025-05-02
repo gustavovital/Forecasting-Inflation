@@ -14,7 +14,7 @@ exp <- exp %>%
   group_by(mes_base = floor_date(date, "month")) %>% 
   slice_max(date) %>% 
   ungroup() %>% 
-  dplyr::select(date, values = mean) %>% 
+  dplyr::select(date, valor = mean) %>% 
   mutate(date = floor_date(date, 'month'))
 
 
