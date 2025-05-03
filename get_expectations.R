@@ -1,7 +1,7 @@
 # get expectations for next month BCB
 
 exp <- 
-  get_top5s_monthly_market_expectations('IPCA', start_date = '2010-01-01') %>% 
+  get_top5s_monthly_market_expectations('IPCA', start_date = '2009-12-01') %>% 
   filter(typeCalc == 'C')
 
 sum_date <- function(date) {
