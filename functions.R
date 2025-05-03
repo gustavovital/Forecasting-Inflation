@@ -18,4 +18,10 @@ to_quarterly_last <- function(df, nome_var) {
     rename(date = quarter_date)
 }
 
-
+baixar_serie <- function(codigo, nome) {
+  get_series(codigo, start_date = "2010-01-01") %>%
+    rename(date = date, valor := !!sym(as.character(codigo))) %>%
+    mutate(date = floor_date(date, "month")) %>%
+    arrange(date) %>% 
+    filter(date < as.Date('2025-01-01'))
+}

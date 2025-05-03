@@ -142,7 +142,7 @@ risco <- full_join(selic, us3m, by = "date") %>%
 risco_T <- to_quarterly(risco, valor)
 
 #...............................................................................
-# COMPONENTES MENSAIS ====
+# COMPONENTES ESTATISTICOS ====
 #...............................................................................
 #.......... ATIVIDADE ECONOMICA ====
 #...............................................................................
@@ -156,18 +156,297 @@ comercio <- sidrar::get_sidra(
   dplyr::select(date, valor) %>%
   arrange(date) %>%
   filter(date >= as.Date("2010-01-01"))
+
 #...............................................................................
 #.................... Energia Eletrica ====
 #...............................................................................
+energia_total <- ipeadata("CONSUMOTOT") %>%
+  dplyr::select(date = date, valor = value) %>%
+  mutate(date = as.Date(date)) %>%
+  filter(date >= as.Date("2010-01-01"))
+
+energia_industrial <- ipeadata("CONSUMOIND") %>%
+  dplyr::select(date = date, valor = value) %>%
+  mutate(date = as.Date(date)) %>%
+  filter(date >= as.Date("2010-01-01"))
+
+energia_residencial <- ipeadata("CONSUMORES") %>%
+  dplyr::select(date = date, valor = value) %>%
+  mutate(date = as.Date(date)) %>%
+  filter(date >= as.Date("2010-01-01"))
 
 #...............................................................................
 #.................... PIB ====
 #...............................................................................
+pib <- rbcb::get_series(29610, start_date = '2010-01-01')  %>%
+  as_tibble() %>%
+  rename(valor = `29610`) %>%
+  arrange(date) %>% 
+  filter(date < as.Date('2025-01-01'))
 
 #...............................................................................
 #.................... Capacidade instalada ====
 #...............................................................................
+uci <- ipeadata("CNI12_NUCAPD12") %>%
+  dplyr::select(date = date, valor = value) %>%
+  mutate(date = as.Date(date)) %>%
+  filter(date >= as.Date("2010-01-01"))
 
 #...............................................................................
 #.................... Desemprego ====
 #...............................................................................
+desemprego <- ipeadata("PNADC12_TDESOC12") %>%
+  dplyr::select(date = date, valor = value) %>%
+  mutate(date = as.Date(date)) %>%
+  filter(date >= as.Date("2012-03-01"))
+
+#...............................................................................
+#.......... EXTERNO ====
+#...............................................................................
+#....................  VIX ====
+#...............................................................................
+getSymbols("^VIX", src = "yahoo", from = "2010-01-01")
+
+vix <- tibble(
+  date = index(VIX),
+  valor = as.numeric(Cl(VIX))
+) %>%
+  mutate(month = floor_date(date, "month")) %>%
+  group_by(month) %>%
+  summarise(valor = mean(valor, na.rm = TRUE)) %>%
+  ungroup() %>%
+  rename(date = month) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+#...............................................................................
+#....................  PPI norte-americano ====
+#...............................................................................
+getSymbols("PPIACO", src = "FRED", from = "2010-01-01")
+
+ppi <- tibble(
+  date = index(PPIACO),
+  valor = as.numeric(PPIACO$PPIACO)
+) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  group_by(date) %>%
+  summarise(valor = mean(valor, na.rm = TRUE)) %>%
+  ungroup() %>% 
+  filter(date < as.Date('2025-01-01'))
+
+#...............................................................................
+#....................  índice de preços de exportação ====
+#...............................................................................
+getSymbols("IQ", src = "FRED", from = "2010-01-01")
+
+epi <- tibble(
+  date = index(IQ),
+  valor = as.numeric(IQ$IQ)
+) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  group_by(date) %>%
+  summarise(valor = mean(valor, na.rm = TRUE)) %>%
+  ungroup()
+
+#...............................................................................
+#....................  índice de preços de exportação ====
+#...............................................................................
+getSymbols("IR", src = "FRED", from = "2010-01-01")
+
+ipi <- tibble(
+  date = index(IR),
+  valor = as.numeric(IR$IR)
+) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  group_by(date) %>%
+  summarise(valor = mean(valor, na.rm = TRUE)) %>%
+  ungroup()
+
+#...............................................................................
+#....................  índice de preços de exportação ====
+#...............................................................................
+quantum_exp <- ipeadata("FUNCEX12_XQT12") %>%
+  dplyr::select(date = date, valor = value) %>%
+  mutate(date = as.Date(date)) %>%
+  filter(date >= as.Date("2010-01-01")) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+#...............................................................................
+#....................  índice de preços de exportação ====
+#...............................................................................
+quantum_imp <- ipeadata("FUNCEX12_MDQT12") %>%
+  dplyr::select(date = date, valor = value) %>%
+  mutate(date = as.Date(date)) %>%
+  filter(date >= as.Date("2010-01-01")) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+#...............................................................................
+#.......... FINANCEIRO ====
+#...............................................................................
+#....................  SELIC Real ====
+#...............................................................................
+ipca_3m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2010-01-01") %>%
+  filter(typeCalc == "C", reference_date == format(date %m+% months(3), "%m/%Y")) %>%
+  group_by(date) %>%
+  summarise(ipca3m = mean(mean)) %>%
+  mutate(mes = floor_date(date, "month")) %>%
+  group_by(mes) %>%
+  slice_tail(n = 1) %>%  # último valor do mês
+  ungroup() %>%
+  dplyr::select(date = mes, valor = ipca3m) %>% 
+  filter(date < as.Date('2025-01-01'))
+  
+
+ipca_12m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2010-01-01") %>%
+  filter(typeCalc == "C", reference_date == format(date %m+% months(12), "%m/%Y")) %>%
+  group_by(date) %>%
+  summarise(ipca12m = mean(mean)) %>%
+  mutate(mes = floor_date(date, "month")) %>%
+  group_by(mes) %>%
+  slice_tail(n = 1) %>%  # último valor do mês
+  ungroup() %>%
+  dplyr::select(date = mes, valor = ipca12m) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+# IGP-M
+igpm_obs <- rbcb::get_series(189, start_date = "2010-01-01")  # série IGP-M
+igpm_obs <- igpm_obs %>%
+  rename(date = date, igpm = `189`) %>%
+  arrange(date) %>%
+  mutate(date = floor_date(date, "month")) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+# Criar deflatores ex post (shift -3 e -12 meses)
+igpm_3m <- igpm_obs %>% mutate(date = date %m-% months(3))
+igpm_12m <- igpm_obs %>% mutate(date = date %m-% months(12))                                
+
+# criar series:
+real_ipca_3m <- tibble(date = selic$date, valor = (selic$valor - ipca_3m$valor))
+real_ipca_12m <- tibble(date = selic$date, valor = (selic$valor - ipca_12m$valor))
+real_igpm_3m <- tibble(date = selic$date, valor = (selic$valor - igpm_3m$igpm))
+real_igpm_12m <- tibble(date = selic$date, valor = (selic$valor - igpm_12m$igpm))
+
+#...............................................................................
+#....................  Spreads sobre a SELIC ====
+#...............................................................................
+spread_pf <- get_series(20745, start_date = "2010-01-01") %>%
+  rename(date = date, spread_pf = `20745`) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  arrange(date) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+spread_pj <- get_series(20746, start_date = "2010-01-01") %>%
+  rename(date = date, spread_pj = `20746`) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  arrange(date) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+spread_total <- get_series(20744, start_date = "2010-01-01") %>%
+  rename(date = date, spread_total = `20744`) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  arrange(date) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+taxa_bndes <- get_series(25322, start_date = "2010-01-01") %>%
+  rename(date = date, bndes = `25322`) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  arrange(date) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+spread_bndes <- taxa_bndes %>%
+  left_join(selic, by = "date") %>%
+  mutate(valor = bndes - valor) %>%
+  dplyr::select(date, valor)
+
+#...............................................................................
+#.......... PREÇOS ====
+#...............................................................................
+#.................... IGP-DI ====
+#...............................................................................
+igpdi <- get_series(188, start_date = "2010-01-01") %>%
+  rename(date = date, igpdi = `188`) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  arrange(date) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+#...............................................................................
+#.................... IPC-BR ====
+#...............................................................................
+ipcbr <- get_series(189, start_date = "2010-01-01") %>%
+  rename(date = date, igpdi = `189`) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  arrange(date) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+#...............................................................................
+#.................... IPC-FIPE ====
+#...............................................................................
+ipcfipe <- get_series(190, start_date = "2010-01-01") %>%
+  rename(date = date, igpdi = `190`) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  arrange(date) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+#...............................................................................
+#.......... MONETARIO  ====
+#...............................................................................
+#.................... M1, M2, M3, M4... ====
+#...............................................................................
+m1      <- baixar_serie(27841, "m1")
+m2      <- baixar_serie(27842, "m2")
+m3      <- baixar_serie(27813, "m3")
+m4      <- baixar_serie(27815, "m4")
+bm      <- baixar_serie(27807, "base_monetaria")
+pmp     <- baixar_serie(27789, "papel_moeda_publico")
+depv    <- baixar_serie(27790, "depositos_vista")
+
+#...............................................................................
+#.......... CHOQUES  ====
+#...............................................................................
+#.................... CBR ====
+#...............................................................................
+getSymbols("CRB", src = "yahoo", from = "2010-01-01")
+
+crb <- tibble(
+  date = index(CRB),
+  valor = as.numeric(Cl(CRB))
+) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  group_by(date) %>%
+  summarise(crb = mean(valor, na.rm = TRUE)) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+#...............................................................................
+#.................... GASOLINA ====
+#...............................................................................
+gasolina <- get_series(4458, start_date = "2010-01-01") %>%
+  rename(date = date, gasolina = `4458`) %>%
+  mutate(date = floor_date(date, "month")) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+#...............................................................................
+#.................... IPA-IPC ====
+#...............................................................................
+ipa    <- baixar_serie(7450, "ipa")
+ipc    <- baixar_serie(191, "ipc")
+ipa_ipc <- tibble(
+  date = ipa$date,
+  valor = (ipa$valor - ipc$valor)
+)
+
+#...............................................................................
+#.................... OLEO ====
+#...............................................................................
+combustiveis <- baixar_serie(1483, 'oil')
+
+#...............................................................................
+#.................... PETROLEO ====
+#...............................................................................
+getSymbols("DCOILWTICO", src = "FRED", from = "2010-01-01")
+
+petroleo <- tibble(
+  date = index(DCOILWTICO),
+  valor = as.numeric(DCOILWTICO$DCOILWTICO)
+) %>%
+  mutate(date = floor_date(date, "month")) %>%
+  group_by(date) %>%
+  summarise(petroleo = mean(valor, na.rm = TRUE))
