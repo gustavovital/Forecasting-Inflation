@@ -8,6 +8,7 @@ This repository presents an integrated empirical framework for short-term inflat
 
 To construct, estimate, and compare the forecasting performance of:
 
+- **Vector Autoregressions (VARs)**
 - **Bayesian Vector Autoregressions (BVARs)** with Minnesota priors
 - **Vector Error Correction Models (VECMs)** based on Johansen’s cointegration methodology
 
@@ -35,7 +36,7 @@ The focus lies on forecasting both **headline IPCA inflation** and its **compone
 - Posterior inference via Gibbs sampling
 - Forecasts (point and density) and impulse response functions computed via `forecast()` and `IRF()`
 
-#### ⚫ *Vector Error Correction Model (VECM)* – via `urca` and `vars`
+#### ⚫ *Vector Error Correction Model (VECM)*
 
 - Cointegration rank selected using Johansen's trace statistic
 - VECM estimated via `cajorls()`, transformed to a level VAR via `vec2var()`
