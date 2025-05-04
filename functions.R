@@ -1,4 +1,5 @@
 # functions.R
+source('get_u.R')
 
 to_quarterly <- function(df, nome_var) {
   nome_var <- rlang::enquo(nome_var)

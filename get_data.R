@@ -1,22 +1,31 @@
+#
+data_montly_d <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "month"))
+data_montly_l <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "month"))
+
+data_quarter_d <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "quarter"))
+data_quarter_l <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "quarter"))
+
+data_statistic <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "month"))
+
 #...............................................................................
 # COMPONENTES MENSAIS ====
 #...............................................................................
 #.......... Preços Livres ====
 #...............................................................................
-p_livre <- rbcb::get_series(11428, start_date = "2010-01-01") %>%
-  as_tibble() %>%
-  rename(valor = `11428`) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+p_livre <- g_series(11428, 'p_livre') 
+data_montly_d <- add_variable(data_montly_d, p_livre, "p_livre")
+
+p_livre_acum <- acum_series(p_livre)
+data_montly_l <- add_variable(data_montly_l, p_livre_acum, "p_livre")
 
 #...............................................................................
 #.......... Preços Administrados ====
 #...............................................................................
-p_admin <- rbcb::get_series(4449, start_date = "2010-01-01") %>%
-  as_tibble() %>%
-  rename(valor = `4449`) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+p_admin <- g_series(4449, 'p_admin') 
+data_montly_d <- add_variable(data_montly_d, p_admin, "p_admin")
+
+# p_admin_acum <- acum_series(p_admin)
+# data_montly_l <- add_variable(data_montly_l, p_admin_acum, "p_admin")
 
 #...............................................................................
 #.......... Expectations ====
@@ -37,84 +46,118 @@ cambio <- tibble(
 cambio <- cambio %>%
   mutate(mes = floor_date(data, "month")) %>%
   group_by(mes) %>%
-  summarise(valor = mean(valor, na.rm = TRUE)) %>%
+  summarise(brlx = mean(valor, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(date = mes) %>% 
-  filter(date >= as.Date('2010-01-01')) %>% 
+  filter(date >= as.Date('2009-12-01')) %>% 
   filter(date < as.Date('2025-01-01'))
 
-rm('BRL=X')
+data_montly_l$brlx <- cambio$brlx[cambio$date >= as.Date('2010-01-01')]
+data_montly_d$brlx <- diff(cambio$brlx)
 
 #...............................................................................
 #.......... i (nominal interest rate) ====
 #...............................................................................
 selic <- ipeadatar::ipeadata("BM12_TJOVER12") %>%
   dplyr::select(date, valor = value) %>%
-  filter(date >= as.Date('2010-01-01')) %>% 
+  filter(date >= as.Date('2009-12-01')) %>% 
   arrange(date) %>% 
   filter(date < as.Date('2025-01-01'))
+
+data_montly_d$selic <- diff(selic$valor[selic$date >= as.Date('2009-12-01')])
+
+# selic_a <- acum_series(selic)
+data_montly_l$selic <- selic$valor[selic$date >= as.Date('2010-01-01')]
+
 
 #...............................................................................
 #.......... r (real interest rate) ====
 #...............................................................................
 r <- tibble(date = selic$date,
-            value = selic$valor - exp$values)
+            value = selic$valor - exp$valor)
+
+data_montly_d$r <- r$value[r$date >= as.Date('2010-01-01')]
 
 #...............................................................................
 #.......... Produção Industrial Brasil ====
 #...............................................................................
-pi <- rbcb::get_series(21859, start_date = "2010-01-01") %>%
-  as_tibble() %>%
-  rename(valor = `21859`) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+pi <- g_series(21859, 'pi')
+pi_ts <- ts(pi$pi, start = c(year(min(pi$date)), month(min(pi$date))), frequency = 12)
 
+#  X13
+x13 <- seasonal::seas(pi_ts)
+pi_sa <- seasonal::final(x13)
+
+pi_sa <- pi %>%
+  mutate(pi = as.numeric(pi_sa))
+
+data_montly_d$pi <- diff(pi$pi)
+data_montly_d$pi_sa <- diff(pi_sa$pi)
+data_montly_l$pi <- pi$pi[pi$date >= as.Date('2010-01-01')]
 #...............................................................................
 #.......... Moeda ====
 #...............................................................................
-m1 <- rbcb::get_series(27791, start_date = "2010-01-01") %>%
-  as_tibble() %>%
-  rename(valor = `27791`) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+m1 <- g_series(27791, 'm1')
+data_montly_d$m1 <- diff(m1$m1)
 
+
+saveRDS(data_montly_l, file = "data/data_montly_l.rds")
+saveRDS(data_montly_d, file = "data/data_montly_d.rds")
 #...............................................................................
 # COMPONENTES TRIMESTRAIS ====
 #...............................................................................
 #.......... Preços Livres ====
 #...............................................................................
-p_livre_T <- to_quarterly(p_livre, valor)
+p_livre_T <- to_quarterly(data_montly_d, p_livre)
+p_livre_T_acum <- acum_series(p_livre_T)
 
+data_quarter_d$p_livre <- p_livre_T$p_livre
+data_quarter_l$p_livre <- p_livre_T_acum$p_livre
 #...............................................................................
 #.......... Preços Administrados ====
 #...............................................................................
-p_admin_T <- to_quarterly(p_livre, valor)
+p_admin_T <- to_quarterly(data_montly_d, p_admin)
+p_admin_T_acum <- acum_series(p_admin_T)
+
+data_quarter_d$p_admin <- p_admin_T$p_admin
+data_quarter_l$p_admin <- p_admin_T_acum$p_admin
 
 #...............................................................................
-#.......... Expectations ====
+#.......... cambio ====
 #...............................................................................
-exp_T <- to_quarterly(exp, valor)
+brlx_T <- to_quarterly(data_montly_d, brlx)
+brlx_T_acum <- to_quarterly(data_montly_l, brlx)
+
+data_quarter_d$brlx <- brlx_T$brlx
+data_quarter_l$brlx <- brlx_T_acum$brlx
 
 #...............................................................................
-#.......... Exchange Rate BRL/US$ ====
+#.......... Juros Reais ====
 #...............................................................................
-cambio_T <- to_quarterly(cambio, valor)
+r_T <- to_quarterly(data_montly_d, r)
 
+data_quarter_d$r <- r_T$r
 #...............................................................................
-#.......... i (nominal interest rate) ====
+#.......... Juros Nominais ====
 #...............................................................................
-selic_T <- to_quarterly(selic, valor)
+selic_T <- to_quarterly(data_montly_d, selic)
 
+data_quarter_d$selic <- selic_T$selic
 #...............................................................................
 #.......... Produção Industrial Brasil ====
 #...............................................................................
-pi_T <- to_quarterly(pi, valor)
+pi_T <- to_quarterly(data_montly_d, pi)
+data_quarter_d$pi <- pi_T$pi
+
+pi <- g_series(21859, 'pi')
+pi_T_acum <- to_quarterly(pi, pi)
+data_quarter_l$pi <- pi_T_acum$pi[pi_T_acum$date > as.Date('2009-12-01')]
 
 #...............................................................................
 #.......... Moeda ====
 #...............................................................................
-m1_T <- to_quarterly_last(m1, valor)
-
+m1_T <- to_quarterly_last(data_montly_d, m1)
+data_quarter_d$m1 <- m1_T$m1
 #...............................................................................
 #.......... EMBI (premio de risco) ====
 #...............................................................................
@@ -140,7 +183,10 @@ risco <- full_join(selic, us3m, by = "date") %>%
   dplyr::select(date, valor)
 
 risco_T <- to_quarterly(risco, valor)
+data_quarter_d$embi <- risco_T$valor
 
+saveRDS(data_quarter_l, file = "data/data_quarter_l.rds")
+saveRDS(data_quarter_d, file = "data/data_quarter_d.rds")
 #...............................................................................
 # COMPONENTES ESTATISTICOS ====
 #...............................................................................
@@ -155,50 +201,44 @@ comercio <- sidrar::get_sidra(
   mutate(date = ym(data)) %>%
   dplyr::select(date, valor) %>%
   arrange(date) %>%
-  filter(date >= as.Date("2010-01-01"))
+  filter(date >= as.Date("2009-12-01")) %>% 
+  filter(date < as.Date("2025-01-01")) 
 
+data_statistic$comercio <- diff(comercio$valor)
 #...............................................................................
 #.................... Energia Eletrica ====
 #...............................................................................
-energia_total <- ipeadata("CONSUMOTOT") %>%
-  dplyr::select(date = date, valor = value) %>%
-  mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2010-01-01"))
+energia_total <- g_series(1406,  'valor') 
+energia_industrial <- g_series(1404, 'valor') 
+energia_residencial <- g_series(1403, 'valor') 
 
-energia_industrial <- ipeadata("CONSUMOIND") %>%
-  dplyr::select(date = date, valor = value) %>%
-  mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2010-01-01"))
 
-energia_residencial <- ipeadata("CONSUMORES") %>%
-  dplyr::select(date = date, valor = value) %>%
-  mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2010-01-01"))
+data_statistic$e1 <- diff(energia_total$valor)
+data_statistic$e2 <- diff(energia_industrial$valor)
+data_statistic$e3 <- diff(energia_residencial$valor)
+
 
 #...............................................................................
 #.................... PIB ====
 #...............................................................................
-pib <- rbcb::get_series(29610, start_date = '2010-01-01')  %>%
-  as_tibble() %>%
-  rename(valor = `29610`) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
-
+ibcbr <- g_series(29609, 'ibcbr') 
+data_statistic$ibcbr <- diff(ibcbr$ibcbr)
 #...............................................................................
 #.................... Capacidade instalada ====
 #...............................................................................
 uci <- ipeadata("CNI12_NUCAPD12") %>%
   dplyr::select(date = date, valor = value) %>%
   mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2010-01-01"))
+  filter(date >= as.Date("2009-12-01")) %>% 
+  filter(date < as.Date("2025-01-01")) 
+
+data_statistic$uci <- diff(uci$valor)
 
 #...............................................................................
 #.................... Desemprego ====
 #...............................................................................
-desemprego <- ipeadata("PNADC12_TDESOC12") %>%
-  dplyr::select(date = date, valor = value) %>%
-  mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2012-03-01"))
+u <- get_u()
+data_statistic$u <- diff(u$u)
 
 #...............................................................................
 #.......... EXTERNO ====
@@ -216,12 +256,15 @@ vix <- tibble(
   summarise(valor = mean(valor, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(date = month) %>% 
-  filter(date < as.Date('2025-01-01'))
+  filter(date < as.Date('2025-01-01')) %>% 
+  filter(date >= as.Date("2009-12-01"))
+
+data_statistic$vix <- (vix$valor)
 
 #...............................................................................
 #....................  PPI norte-americano ====
 #...............................................................................
-getSymbols("PPIACO", src = "FRED", from = "2010-01-01")
+getSymbols("PPIACO", src = "FRED", from = "2009-12-01")
 
 ppi <- tibble(
   date = index(PPIACO),
@@ -233,10 +276,11 @@ ppi <- tibble(
   ungroup() %>% 
   filter(date < as.Date('2025-01-01'))
 
+data_statistic$ppi <- diff(ppi$valor)
 #...............................................................................
 #....................  índice de preços de exportação ====
 #...............................................................................
-getSymbols("IQ", src = "FRED", from = "2010-01-01")
+getSymbols("IQ", src = "FRED", from = "2009-12-01")
 
 epi <- tibble(
   date = index(IQ),
@@ -245,12 +289,14 @@ epi <- tibble(
   mutate(date = floor_date(date, "month")) %>%
   group_by(date) %>%
   summarise(valor = mean(valor, na.rm = TRUE)) %>%
-  ungroup()
+  ungroup() %>% 
+  filter(date < as.Date('2025-01-01'))
 
+data_statistic$epi <- diff(epi$valor)
 #...............................................................................
 #....................  índice de preços de exportação ====
 #...............................................................................
-getSymbols("IR", src = "FRED", from = "2010-01-01")
+getSymbols("IR", src = "FRED", from = "2009-12-01")
 
 ipi <- tibble(
   date = index(IR),
@@ -259,32 +305,42 @@ ipi <- tibble(
   mutate(date = floor_date(date, "month")) %>%
   group_by(date) %>%
   summarise(valor = mean(valor, na.rm = TRUE)) %>%
-  ungroup()
+  ungroup() %>% 
+  filter(date < as.Date('2025-01-01'))
 
+data_statistic$ipi <- diff(ipi$valor)
 #...............................................................................
 #....................  índice de preços de exportação ====
 #...............................................................................
 quantum_exp <- ipeadata("FUNCEX12_XQT12") %>%
   dplyr::select(date = date, valor = value) %>%
   mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2010-01-01")) %>% 
+  filter(date >= as.Date("2009-12-01")) %>% 
   filter(date < as.Date('2025-01-01'))
 
+data_statistic$quantum_x <- diff(quantum_exp$valor)
 #...............................................................................
 #....................  índice de preços de exportação ====
 #...............................................................................
 quantum_imp <- ipeadata("FUNCEX12_MDQT12") %>%
   dplyr::select(date = date, valor = value) %>%
   mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2010-01-01")) %>% 
+  filter(date >= as.Date("2009-12-01")) %>% 
   filter(date < as.Date('2025-01-01'))
 
+data_statistic$quantum_m <- diff(quantum_imp$valor)
 #...............................................................................
 #.......... FINANCEIRO ====
 #...............................................................................
 #....................  SELIC Real ====
 #...............................................................................
-ipca_3m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2010-01-01") %>%
+selic <- ipeadatar::ipeadata("BM12_TJOVER12") %>%
+  dplyr::select(date, valor = value) %>%
+  filter(date >= as.Date('2009-12-01')) %>% 
+  arrange(date) %>% 
+  filter(date < as.Date('2025-01-01'))
+
+ipca_3m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2009-12-01") %>%
   filter(typeCalc == "C", reference_date == format(date %m+% months(3), "%m/%Y")) %>%
   group_by(date) %>%
   summarise(ipca3m = mean(mean)) %>%
@@ -296,7 +352,7 @@ ipca_3m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2010-01-0
   filter(date < as.Date('2025-01-01'))
   
 
-ipca_12m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2010-01-01") %>%
+ipca_12m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2009-12-01") %>%
   filter(typeCalc == "C", reference_date == format(date %m+% months(12), "%m/%Y")) %>%
   group_by(date) %>%
   summarise(ipca12m = mean(mean)) %>%
@@ -308,7 +364,7 @@ ipca_12m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2010-01-
   filter(date < as.Date('2025-01-01'))
 
 # IGP-M
-igpm_obs <- rbcb::get_series(189, start_date = "2010-01-01")  # série IGP-M
+igpm_obs <- rbcb::get_series(189, start_date = "2009-12-01")  # série IGP-M
 igpm_obs <- igpm_obs %>%
   rename(date = date, igpm = `189`) %>%
   arrange(date) %>%
@@ -320,124 +376,158 @@ igpm_3m <- igpm_obs %>% mutate(date = date %m-% months(3))
 igpm_12m <- igpm_obs %>% mutate(date = date %m-% months(12))                                
 
 # criar series:
+real_igpm_3m <- left_join(selic, igpm_3m, by = "date") %>%
+  mutate(valor = valor - igpm) %>%
+  dplyr::select(date, valor) %>% 
+  filter(date >= as.Date('2009-12-01'))
+
+real_igpm_12m <- left_join(selic, igpm_12m, by = "date") %>%
+  mutate(valor = valor - igpm) %>%
+  dplyr::select(date, valor) %>% 
+  filter(date >= as.Date('2009-12-01'))
+
 real_ipca_3m <- tibble(date = selic$date, valor = (selic$valor - ipca_3m$valor))
 real_ipca_12m <- tibble(date = selic$date, valor = (selic$valor - ipca_12m$valor))
-real_igpm_3m <- tibble(date = selic$date, valor = (selic$valor - igpm_3m$igpm))
-real_igpm_12m <- tibble(date = selic$date, valor = (selic$valor - igpm_12m$igpm))
 
+
+data_statistic$igpm_3 <- diff(real_igpm_3m$valor)
+data_statistic$igpm_12 <- diff(real_igpm_12m$valor)
+data_statistic$ipca_3 <- diff(real_ipca_3m$valor)
+data_statistic$ipca_12 <- diff(real_ipca_12m$valor)
 #...............................................................................
 #....................  Spreads sobre a SELIC ====
 #...............................................................................
-spread_pf <- get_series(20745, start_date = "2010-01-01") %>%
-  rename(date = date, spread_pf = `20745`) %>%
-  mutate(date = floor_date(date, "month")) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+taxa_pf <- g_series(20737, 'pf') 
+taxa_pj <- g_series(20738, 'pj') 
+taxa_pt <- g_series(20736, 'pt') 
 
-spread_pj <- get_series(20746, start_date = "2010-01-01") %>%
-  rename(date = date, spread_pj = `20746`) %>%
-  mutate(date = floor_date(date, "month")) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+spread_pf <- left_join(taxa_pf, selic, by = "date") %>%
+  mutate(valor = pf - valor) %>%
+  dplyr::select(date, valor) %>% 
+  filter(date >= as.Date('2011-12-01'))
 
-spread_total <- get_series(20744, start_date = "2010-01-01") %>%
-  rename(date = date, spread_total = `20744`) %>%
-  mutate(date = floor_date(date, "month")) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+spread_pj <- left_join(taxa_pj, selic, by = "date") %>%
+  mutate(valor = pj - valor) %>%
+  dplyr::select(date, valor) %>% 
+  filter(date >= as.Date('2011-12-01'))
 
-taxa_bndes <- get_series(25322, start_date = "2010-01-01") %>%
-  rename(date = date, bndes = `25322`) %>%
-  mutate(date = floor_date(date, "month")) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+spread_total <- left_join(taxa_pt, selic, by = "date") %>%
+  mutate(valor = pt - valor) %>%
+  dplyr::select(date, valor) %>% 
+  filter(date >= as.Date('2011-12-01'))
 
-spread_bndes <- taxa_bndes %>%
-  left_join(selic, by = "date") %>%
-  mutate(valor = bndes - valor) %>%
-  dplyr::select(date, valor)
+#...............................................................................
+# necessidade de redução de obs.. nao tenho dados disponiveis ====
+data_statistic <- data_statistic %>% 
+  filter(date >= as.Date('2012-01-01'))
+#...............................................................................
+
+spread_pf <- diff(spread_pf$valor)
+spread_pj <- diff(spread_pj$valor)
+spread_total <- diff(spread_total$valor)
+
+data_statistic$spread_pf <- spread_pf
+data_statistic$spread_pj <- spread_pj
+data_statistic$spread_total <- spread_total
 
 #...............................................................................
 #.......... PREÇOS ====
 #...............................................................................
 #.................... IGP-DI ====
 #...............................................................................
-igpdi <- get_series(188, start_date = "2010-01-01") %>%
+igpdi <- get_series(188, start_date = "2012-01-01") %>%
   rename(date = date, igpdi = `188`) %>%
   mutate(date = floor_date(date, "month")) %>%
   arrange(date) %>% 
   filter(date < as.Date('2025-01-01'))
 
+data_statistic$igpdi <- igpdi$igpdi
 #...............................................................................
 #.................... IPC-BR ====
 #...............................................................................
-ipcbr <- get_series(189, start_date = "2010-01-01") %>%
+ipcbr <- get_series(189, start_date = "2012-01-01") %>%
   rename(date = date, igpdi = `189`) %>%
   mutate(date = floor_date(date, "month")) %>%
   arrange(date) %>% 
   filter(date < as.Date('2025-01-01'))
 
+data_statistic$ipcbr <- ipcbr$igpdi
 #...............................................................................
 #.................... IPC-FIPE ====
 #...............................................................................
-ipcfipe <- get_series(190, start_date = "2010-01-01") %>%
+ipcfipe <- get_series(190, start_date = "2012-01-01") %>%
   rename(date = date, igpdi = `190`) %>%
   mutate(date = floor_date(date, "month")) %>%
   arrange(date) %>% 
   filter(date < as.Date('2025-01-01'))
 
+data_statistic$ipcfipe <- ipcfipe$igpdi
+#...............................................................................
+#.................... Livres e Adm ====
+#...............................................................................
+data_statistic$p_livre <- data_montly_d$p_livre[data_montly_d$date >= as.Date('2012-01-01')]
+data_statistic$p_admin <- data_montly_d$p_admin[data_montly_d$date >= as.Date('2012-01-01')]
 #...............................................................................
 #.......... MONETARIO  ====
 #...............................................................................
 #.................... M1, M2, M3, M4... ====
 #...............................................................................
-m1      <- baixar_serie(27841, "m1")
-m2      <- baixar_serie(27842, "m2")
-m3      <- baixar_serie(27813, "m3")
-m4      <- baixar_serie(27815, "m4")
-bm      <- baixar_serie(27807, "base_monetaria")
-pmp     <- baixar_serie(27789, "papel_moeda_publico")
-depv    <- baixar_serie(27790, "depositos_vista")
+m1      <- g_series(27841, "m1") %>% filter(date >= '2011-12-01')
+m2      <- g_series(27842, "m2")%>% filter(date >= '2011-12-01')
+m3      <- g_series(27813, "m3")%>% filter(date >= '2011-12-01')
+m4      <- g_series(27815, "m4")%>% filter(date >= '2011-12-01')
+bm      <- g_series(27807, "base_monetaria")%>% filter(date >= '2011-12-01')
+pmp     <- g_series(27789, "papel_moeda_publico")%>% filter(date >= '2011-12-01')
+depv    <- g_series(27790, "depositos_vista")%>% filter(date >= '2011-12-01')
 
+data_statistic$m1 <- diff(m1$m1)
+data_statistic$m2 <- diff(m2$m2)
+data_statistic$m3 <- diff(m3$m3)
+data_statistic$m4 <- diff(m4$m4)
+data_statistic$bm <- diff(bm$base_monetaria)
+data_statistic$pmp <- diff(pmp$papel_moeda_publico)
+data_statistic$depv <- diff(depv$depositos_vista)
 #...............................................................................
 #.......... CHOQUES  ====
 #...............................................................................
 #.................... CBR ====
 #...............................................................................
-getSymbols("CRB", src = "yahoo", from = "2010-01-01")
+getSymbols("DBC", src = "yahoo", from = "2011-12-01")
 
 crb <- tibble(
-  date = index(CRB),
-  valor = as.numeric(Cl(CRB))
+  date = index(DBC),
+  valor = as.numeric(Cl(DBC))
 ) %>%
   mutate(date = floor_date(date, "month")) %>%
   group_by(date) %>%
-  summarise(crb = mean(valor, na.rm = TRUE)) %>% 
+  summarise(crb = mean(valor, na.rm = TRUE)) %>%
   filter(date < as.Date('2025-01-01'))
 
+data_statistic$crb <- diff(crb$crb)
 #...............................................................................
 #.................... GASOLINA ====
 #...............................................................................
-gasolina <- get_series(4458, start_date = "2010-01-01") %>%
-  rename(date = date, gasolina = `4458`) %>%
-  mutate(date = floor_date(date, "month")) %>% 
-  filter(date < as.Date('2025-01-01'))
+gasolina <- g_series(1393, 'gas') %>% filter(date >= '2011-12-01')
 
+data_statistic$gas <- diff(gasolina$gas)
 #...............................................................................
 #.................... IPA-IPC ====
 #...............................................................................
-ipa    <- baixar_serie(7450, "ipa")
-ipc    <- baixar_serie(191, "ipc")
+ipa    <- g_series(7450, "ipa")
+ipc    <- g_series(191, "ipc")
 ipa_ipc <- tibble(
   date = ipa$date,
-  valor = (ipa$valor - ipc$valor)
-)
+  valor = (ipa$ipa - ipc$ipc)
+) %>% filter(date >= '2012-01-01')
 
+data_statistic$ipa_ipc <- ipa_ipc$valor
 #...............................................................................
 #.................... OLEO ====
 #...............................................................................
-combustiveis <- baixar_serie(1483, 'oil')
+combustiveis <- g_series(1483, 'oil') %>% filter(date >= '2011-12-01')
+oil <- diff(combustiveis$oil)
 
+data_statistic$oil <- oil
 #...............................................................................
 #.................... PETROLEO ====
 #...............................................................................
@@ -449,4 +539,12 @@ petroleo <- tibble(
 ) %>%
   mutate(date = floor_date(date, "month")) %>%
   group_by(date) %>%
-  summarise(petroleo = mean(valor, na.rm = TRUE))
+  summarise(petroleo = mean(valor, na.rm = TRUE)) %>% 
+  filter(date >= '2011-12-01') %>% 
+  filter(date < as.Date('2025-01-01'))
+
+data_statistic$petrol <- diff(petroleo$petroleo)
+
+saveRDS(data_statistic, file = "data/data_statistic.rds")
+
+rm(list = ls())
