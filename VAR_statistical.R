@@ -1,0 +1,1 @@
+data_statistic <- readRDS("data/data_statistic.rds")
