@@ -120,7 +120,6 @@ p_admin_T <- to_quarterly(data_montly_d, p_admin)
 p_admin_T_acum <- acum_series(p_admin_T)
 
 data_quarter_d$p_admin <- p_admin_T$p_admin
-data_quarter_l$p_admin <- p_admin_T_acum$p_admin
 
 #...............................................................................
 #.......... cambio ====
@@ -143,15 +142,14 @@ data_quarter_d$r <- r_T$r
 selic_T <- to_quarterly(data_montly_d, selic)
 
 data_quarter_d$selic <- selic_T$selic
+data_quarter_l$selic <- selic_T$selic
 #...............................................................................
 #.......... Produção Industrial Brasil ====
 #...............................................................................
-pi_T <- to_quarterly(data_montly_d, pi)
-data_quarter_d$pi <- pi_T$pi
+pi_T <- to_quarterly(data_montly_d, pi_sa)
+data_quarter_d$pi_sa <- pi_T$pi_sa
 
-pi <- g_series(21859, 'pi')
-pi_T_acum <- to_quarterly(pi, pi)
-data_quarter_l$pi <- pi_T_acum$pi[pi_T_acum$date > as.Date('2009-12-01')]
+data_quarter_l$pi_sa <- pi_T$pi_sa[pi_T$date > as.Date('2009-12-01')]
 
 #...............................................................................
 #.......... Moeda ====

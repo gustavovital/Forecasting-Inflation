@@ -35,7 +35,7 @@ acum_series <- function(data) {
   var_name <- names(data)[2]
   data %>%
     mutate(
-      !!sym(var_name) := cumprod(1 + .data[[var_name]] / 100)
+      !!sym(var_name) := cumsum(.data[[var_name]])
     ) %>%
     dplyr::select(date, !!sym(var_name))
 }

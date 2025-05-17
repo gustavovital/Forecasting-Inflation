@@ -24,7 +24,7 @@ forecast_q_wide <- forecast_q %>%
 
 
 forecast_m_wide %>%
-  dplyr::filter(component == 'p_admin') %>% 
+  dplyr::filter(component == 'p_livre') %>% 
   ggplot(aes(x = horizon)) +
   
   geom_line(aes(y = mean_VAR_I), size=.2, color = 'dodgerblue2') +
@@ -37,13 +37,13 @@ forecast_m_wide %>%
   geom_line(aes(y = mean_VECM), size=.2, color = 'darkgreen') +
   
   geom_line(aes(y = `mean_COMPONENT I`), color = "black", size = 0.8) +
-  geom_ribbon(aes(ymin = `lower_COMPONENT I`, ymax = `upper_COMPONENT I`),
-              fill = "black", alpha = 0.15) +
+  # geom_ribbon(aes(ymin = `lower_COMPONENT I`, ymax = `upper_COMPONENT I`),
+  #             fill = "black", alpha = 0.15) +
   
   # Component II
   geom_line(aes(y = `mean_COMPONENT II`), color = "orange", size = 0.8) +
-  geom_ribbon(aes(ymin = `lower_COMPONENT II`, ymax = `upper_COMPONENT II`),
-              fill = "orange", alpha = 0.15) +
+  # geom_ribbon(aes(ymin = `lower_COMPONENT II`, ymax = `upper_COMPONENT II`),
+  #             fill = "orange", alpha = 0.15) +
   
   labs(
     title = "Forecasts for p_livre with Confidence Intervals",
