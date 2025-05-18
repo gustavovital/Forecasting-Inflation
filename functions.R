@@ -50,3 +50,12 @@ add_variable <- function(df, var_df, var_name) {
     filter(date >= as.Date('2010-01-01') & date < as.Date('2025-01-01'))
     
 }
+
+# statistical VAR ====
+get_pcs <- function(df, vars, n = 2) {
+  df_clean <- df %>% dplyr::select(all_of(vars)) %>% 
+    drop_na()
+  pcs <- prcomp(df_clean, scale. = TRUE)
+  pcs$x[, 1:n] %>%
+    as_tibble()
+}
