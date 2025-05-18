@@ -37,16 +37,21 @@ exp <- exp %>%
 #...............................................................................
 #.......... Exchange Rate BRL/US$ ====
 #...............................................................................
-getSymbols("BRL=X", src = "yahoo", from = "2000-01-01")
-cambio <- tibble(
-  data = index(`BRL=X`),
-  valor = as.numeric(Cl(`BRL=X`))
-)
+# getSymbols("BRL=X", src = "yahoo", from = "2000-01-01", auto.assign = TRUE)
+
+# cambio <- data.frame(
+#   date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "month"),
+#   valor = as.numeric(Cl(`BRL=X`))
+# )
+
+data_xts <- getSymbols("BRL=X", src = "yahoo", auto.assign = FALSE)
+
+cambio <- zoo::fortify.zoo(data_xts)
 
 cambio <- cambio %>%
-  mutate(mes = floor_date(data, "month")) %>%
+  mutate(mes = floor_date(Index, "month")) %>%
   group_by(mes) %>%
-  summarise(brlx = mean(valor, na.rm = TRUE)) %>%
+  summarise(brlx = mean(`BRL=X.Close`, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(date = mes) %>% 
   filter(date >= as.Date('2009-12-01')) %>% 
@@ -243,15 +248,13 @@ data_statistic$u <- diff(u$u)
 #...............................................................................
 #....................  VIX ====
 #...............................................................................
-getSymbols("^VIX", src = "yahoo", from = "2010-01-01")
+vix <- getSymbols("^VIX", src = "yahoo", from = "2010-01-01", auto.assign = FALSE)
+vix <- zoo::fortify.zoo(vix)
 
-vix <- tibble(
-  date = index(VIX),
-  valor = as.numeric(Cl(VIX))
-) %>%
-  mutate(month = floor_date(date, "month")) %>%
+vix<-vix %>%
+  mutate(month = floor_date(Index, "month")) %>%
   group_by(month) %>%
-  summarise(valor = mean(valor, na.rm = TRUE)) %>%
+  summarise(valor = mean(`VIX.Close`, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(date = month) %>% 
   filter(date < as.Date('2025-01-01')) %>% 
@@ -264,13 +267,12 @@ data_statistic$vix <- (vix$valor)
 #...............................................................................
 getSymbols("PPIACO", src = "FRED", from = "2009-12-01")
 
-ppi <- tibble(
-  date = index(PPIACO),
-  valor = as.numeric(PPIACO$PPIACO)
-) %>%
-  mutate(date = floor_date(date, "month")) %>%
+ppi <- zoo::fortify.zoo(PPIACO)
+
+ppi <-ppi  %>%
+  mutate(date = floor_date(Index, "month")) %>%
   group_by(date) %>%
-  summarise(valor = mean(valor, na.rm = TRUE)) %>%
+  summarise(valor = mean(PPIACO, na.rm = TRUE)) %>%
   ungroup() %>% 
   filter(date < as.Date('2025-01-01'))
 
@@ -279,14 +281,12 @@ data_statistic$ppi <- diff(ppi$valor)
 #....................  índice de preços de exportação ====
 #...............................................................................
 getSymbols("IQ", src = "FRED", from = "2009-12-01")
+epi <- zoo::fortify.zoo(IQ)
 
-epi <- tibble(
-  date = index(IQ),
-  valor = as.numeric(IQ$IQ)
-) %>%
-  mutate(date = floor_date(date, "month")) %>%
+epi <- epi %>%
+  mutate(date = floor_date(Index, "month")) %>%
   group_by(date) %>%
-  summarise(valor = mean(valor, na.rm = TRUE)) %>%
+  summarise(valor = mean(IQ, na.rm = TRUE)) %>%
   ungroup() %>% 
   filter(date < as.Date('2025-01-01'))
 
@@ -295,14 +295,12 @@ data_statistic$epi <- diff(epi$valor)
 #....................  índice de preços de exportação ====
 #...............................................................................
 getSymbols("IR", src = "FRED", from = "2009-12-01")
+ipi <- zoo::fortify.zoo(IR)
 
-ipi <- tibble(
-  date = index(IR),
-  valor = as.numeric(IR$IR)
-) %>%
-  mutate(date = floor_date(date, "month")) %>%
+ipi <- ipi  %>%
+  mutate(date = floor_date(Index, "month")) %>%
   group_by(date) %>%
-  summarise(valor = mean(valor, na.rm = TRUE)) %>%
+  summarise(valor = mean(IR, na.rm = TRUE)) %>%
   ungroup() %>% 
   filter(date < as.Date('2025-01-01'))
 
@@ -338,28 +336,28 @@ selic <- ipeadatar::ipeadata("BM12_TJOVER12") %>%
   arrange(date) %>% 
   filter(date < as.Date('2025-01-01'))
 
-ipca_3m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2009-12-01") %>%
-  filter(typeCalc == "C", reference_date == format(date %m+% months(3), "%m/%Y")) %>%
-  group_by(date) %>%
-  summarise(ipca3m = mean(mean)) %>%
-  mutate(mes = floor_date(date, "month")) %>%
-  group_by(mes) %>%
-  slice_tail(n = 1) %>%  # último valor do mês
-  ungroup() %>%
-  dplyr::select(date = mes, valor = ipca3m) %>% 
-  filter(date < as.Date('2025-01-01'))
+# ipca_3m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2009-12-01") %>%
+#   filter(typeCalc == "C", reference_date == format(date %m+% months(3), "%m/%Y")) %>%
+#   group_by(date) %>%
+#   summarise(ipca3m = mean(mean)) %>%
+#   mutate(mes = floor_date(date, "month")) %>%
+#   group_by(mes) %>%
+#   slice_tail(n = 1) %>%  # último valor do mês
+#   ungroup() %>%
+#   dplyr::select(date = mes, valor = ipca3m) %>% 
+#   filter(date < as.Date('2025-01-01'))
   
 
-ipca_12m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2009-12-01") %>%
-  filter(typeCalc == "C", reference_date == format(date %m+% months(12), "%m/%Y")) %>%
-  group_by(date) %>%
-  summarise(ipca12m = mean(mean)) %>%
-  mutate(mes = floor_date(date, "month")) %>%
-  group_by(mes) %>%
-  slice_tail(n = 1) %>%  # último valor do mês
-  ungroup() %>%
-  dplyr::select(date = mes, valor = ipca12m) %>% 
-  filter(date < as.Date('2025-01-01'))
+# ipca_12m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2009-12-01") %>%
+#   filter(typeCalc == "C", reference_date == format(date %m+% months(12), "%m/%Y")) %>%
+#   group_by(date) %>%
+#   summarise(ipca12m = mean(mean)) %>%
+#   mutate(mes = floor_date(date, "month")) %>%
+#   group_by(mes) %>%
+#   slice_tail(n = 1) %>%  # último valor do mês
+#   ungroup() %>%
+#   dplyr::select(date = mes, valor = ipca12m) %>% 
+#   filter(date < as.Date('2025-01-01'))
 
 # IGP-M
 igpm_obs <- rbcb::get_series(189, start_date = "2009-12-01")  # série IGP-M
@@ -370,28 +368,51 @@ igpm_obs <- igpm_obs %>%
   filter(date < as.Date('2025-01-01'))
 
 # Criar deflatores ex post (shift -3 e -12 meses)
-igpm_3m <- igpm_obs %>% mutate(date = date %m-% months(3))
-igpm_12m <- igpm_obs %>% mutate(date = date %m-% months(12))                                
+# igpm_3m <- igpm_obs %>% mutate(date = date %m-% months(3))
+# igpm_12m <- igpm_obs %>% mutate(date = date %m-% months(12))                                
+
+ipca_obs <- rbcb::get_series(433, start_date = "2009-12-01") %>%
+  rename(date = date, ipca = `433`) %>%
+  arrange(date) %>%
+  mutate(ipca_3  = dplyr::lag(ipca, 3),
+         ipca_12 = dplyr::lag(ipca, 12)) %>%
+  select(date, ipca_3, ipca_12)
+
+data_statistic <- data_statistic %>%
+  left_join(ipca_obs, by = "date")
+
+igpm_obs <- rbcb::get_series(189, start_date = "2009-12-01") %>%
+  rename(date = date, igpm = `189`) %>%
+  arrange(date) %>%
+  mutate(igpm_3  = dplyr::lag(igpm, 3),
+         igpm_12 = dplyr::lag(igpm, 12)) %>%
+  select(date, igpm_3, igpm_12)
+
+# Merge com base principal
+data_statistic <- data_statistic %>%
+  left_join(igpm_obs, by = "date")
 
 # criar series:
-real_igpm_3m <- left_join(selic, igpm_3m, by = "date") %>%
-  mutate(valor = valor - igpm) %>%
-  dplyr::select(date, valor) %>% 
-  filter(date >= as.Date('2009-12-01'))
+# real_igpm_3m <- left_join(selic, igpm_3m, by = "date") %>%
+#   mutate(valor = valor - igpm) %>%
+#   dplyr::select(date, valor) %>% 
+#   filter(date >= as.Date('2009-12-01'))
 
-real_igpm_12m <- left_join(selic, igpm_12m, by = "date") %>%
-  mutate(valor = valor - igpm) %>%
-  dplyr::select(date, valor) %>% 
-  filter(date >= as.Date('2009-12-01'))
+# real_igpm_12m <- left_join(selic, igpm_12m, by = "date") %>%
+#   mutate(valor = valor - igpm) %>%
+#   dplyr::select(date, valor) %>% 
+#   filter(date >= as.Date('2009-12-01'))
 
-real_ipca_3m <- tibble(date = selic$date, valor = (selic$valor - ipca_3m$valor))
-real_ipca_12m <- tibble(date = selic$date, valor = (selic$valor - ipca_12m$valor))
+# real_ipca_3m <- tibble(date = selic$date, valor = (selic$valor - ipca_3m$valor))
+# real_ipca_12m <- tibble(date = selic$date, valor = (selic$valor - ipca_12m$valor))
 
 
-data_statistic$igpm_3 <- diff(real_igpm_3m$valor)
-data_statistic$igpm_12 <- diff(real_igpm_12m$valor)
-data_statistic$ipca_3 <- diff(real_ipca_3m$valor)
-data_statistic$ipca_12 <- diff(real_ipca_12m$valor)
+# length(diff(selic$valor))
+data_statistic$selic <- diff(selic$valor)
+# data_statistic$igpm_3 <- diff(real_igpm_3m$valor)
+# data_statistic$igpm_12 <- diff(real_igpm_12m$valor)
+# data_statistic$ipca_3 <- diff(real_ipca_3m$valor)
+# data_statistic$ipca_12 <- diff(real_ipca_12m$valor)
 #...............................................................................
 #....................  Spreads sobre a SELIC ====
 #...............................................................................
@@ -490,15 +511,14 @@ data_statistic$depv <- diff(depv$depositos_vista)
 #...............................................................................
 #.................... CBR ====
 #...............................................................................
-getSymbols("DBC", src = "yahoo", from = "2011-12-01")
+dbc <- getSymbols("DBC", src = "yahoo", from = "2011-12-01", auto.assign = FALSE)
 
-crb <- tibble(
-  date = index(DBC),
-  valor = as.numeric(Cl(DBC))
-) %>%
-  mutate(date = floor_date(date, "month")) %>%
+dbc <- zoo::fortify.zoo(dbc)
+
+crb <- dbc %>% 
+  mutate(date = floor_date(Index, "month")) %>%
   group_by(date) %>%
-  summarise(crb = mean(valor, na.rm = TRUE)) %>%
+  summarise(crb = mean(`DBC.Close`, na.rm = TRUE)) %>%
   filter(date < as.Date('2025-01-01'))
 
 data_statistic$crb <- diff(crb$crb)
@@ -529,15 +549,14 @@ data_statistic$oil <- oil
 #...............................................................................
 #.................... PETROLEO ====
 #...............................................................................
-getSymbols("DCOILWTICO", src = "FRED", from = "2010-01-01")
+petroleo <- getSymbols("DCOILWTICO", src = "FRED", from = "2010-01-01", auto.assign = FALSE)
 
-petroleo <- tibble(
-  date = index(DCOILWTICO),
-  valor = as.numeric(DCOILWTICO$DCOILWTICO)
-) %>%
-  mutate(date = floor_date(date, "month")) %>%
+petroleo <- zoo::fortify.zoo(petroleo)
+
+petroleo <- petroleo %>%
+  mutate(date = floor_date(Index, "month")) %>%
   group_by(date) %>%
-  summarise(petroleo = mean(valor, na.rm = TRUE)) %>% 
+  summarise(petroleo = mean(DCOILWTICO, na.rm = TRUE)) %>% 
   filter(date >= '2011-12-01') %>% 
   filter(date < as.Date('2025-01-01'))
 

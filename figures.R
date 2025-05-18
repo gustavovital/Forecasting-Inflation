@@ -1,6 +1,7 @@
 rm(list = ls())
 
 library(tidyverse)
+library(ggplot2)
 
 data_montly_d <- readRDS("data/data_montly_d.rds")
 forecast_m <- readRDS('data/forecast_montly.rds')
@@ -23,7 +24,7 @@ forecast_q_wide <- forecast_q %>%
 
 
 
-forecast_m_wide %>%
+forecast_q_wide %>%
   dplyr::filter(component == 'p_livre') %>% 
   ggplot(aes(x = horizon)) +
   
