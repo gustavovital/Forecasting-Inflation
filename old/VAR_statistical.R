@@ -136,6 +136,10 @@ for (s in strategies) {
                 # Estimar modelo VAR
                 model <- try(VAR(X, p = lag, type = "const"), silent = TRUE)
                 
+                if (any(is.na(coef(model)))) {
+                  model <- try(VAR(X, p = lag, type = "none"), silent = TRUE)
+                }
+                
                 if (!inherits(model, "try-error")) {
                   model_list[[model_id]] <- list(
                     strategy = s,
@@ -258,6 +262,10 @@ for (s in strategies) {
       )
       
       model <- try(VAR(X, p = lag, type = "const"), silent = TRUE)
+      
+      if (any(is.na(coef(model)))) {
+        model <- try(VAR(X, p = lag, type = "none"), silent = TRUE)
+      }
       
       if (!inherits(model, "try-error")) {
         model_list_2[[model_id_2]] <- list(
@@ -394,10 +402,20 @@ forecast_class2 <- forecast_class2 %>% dplyr::mutate(model_id = as.character(mod
 forecast_class1 <- bind_rows(forecast_class1, component_I)
 forecast_class2 <- bind_rows(forecast_class2, component_II)
 
-var_statistical <- bind_rows(forecast_class1, forecast_class2)
+# var_statistical <- bind_rows(forecast_class1, forecast_class2)
 
 # Salvar se desejar
 # saveRDS(var_statistical, 'data/forecast_statistical.rds')
 saveRDS(forecast_class1, 'data/forecast_class_I.rds')
 saveRDS(forecast_class2, 'data/forecast_class_II.rds')
 # saveRDS(forecast_class2, 'data/forecast_class_II.rds')
+
+
+
+
+
+
+predict(model_list[[789]])
+
+
+
