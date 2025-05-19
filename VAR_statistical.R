@@ -354,16 +354,20 @@ for (i in seq_along(model_list_2)) {
 
 forecast_class2 <- bind_rows(forecast_list_2)
 
+forecast_class1$class <- 'CLASS I'
+forecast_class2$class <- 'CLASS II'
+
 forecast_class1 <- forecast_class1 %>% 
-  dplyr::select(model_id, horizon, mean, lower, upper)
+  dplyr::select(model_id, horizon, mean, lower, upper, class)
 
 forecast_class2 <- forecast_class2 %>% 
-  dplyr::select(model_id, horizon, mean, lower, upper)
+  dplyr::select(model_id, horizon, mean, lower, upper, class)
 
 # Create component ====
 component_I <- forecast_class1 %>%
   group_by(horizon) %>%
   summarise(
+    class = 'COMPONENT CLASS I',
     model_id     = "COMPONENT I",
     mean      = median(mean, na.rm = TRUE),
     lower     = median(lower, na.rm = TRUE),
@@ -375,6 +379,7 @@ component_I <- forecast_class1 %>%
 component_II <- forecast_class2 %>%
   group_by(horizon) %>%
   summarise(
+    class = 'COMPONENT CLASS II',
     model_id     = "COMPONENT II",
     mean      = median(mean, na.rm = TRUE),
     lower     = median(lower, na.rm = TRUE),
@@ -392,5 +397,7 @@ forecast_class2 <- bind_rows(forecast_class2, component_II)
 var_statistical <- bind_rows(forecast_class1, forecast_class2)
 
 # Salvar se desejar
-saveRDS(var_statistical, 'data/forecast_statistical.rds')
+# saveRDS(var_statistical, 'data/forecast_statistical.rds')
+saveRDS(forecast_class1, 'data/forecast_class_I.rds')
+saveRDS(forecast_class2, 'data/forecast_class_II.rds')
 # saveRDS(forecast_class2, 'data/forecast_class_II.rds')
