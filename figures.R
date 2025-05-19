@@ -158,3 +158,22 @@ forecast_c1 %>%
     x = "Horizon",
     y = "Forecasted Value"
   )
+
+forecast_c2 %>%
+  ggplot(aes(x = horizon, y = mean, group = model_id)) +
+  geom_line(
+    aes(
+      color = class,
+      size = class  # Map size to class directly
+    ),
+    alpha = 0.6
+  ) +
+  scale_size_manual(values = c("CLASS II" = 0.06, "COMPONENT CLASS II" = .8)) +  # Adjust these values
+  scale_color_manual(values = c("CLASS II" = "gray60", "COMPONENT CLASS II" = "darkred")) +
+  theme_minimal() +
+  theme(legend.position = "none") +
+  labs(
+    title = "Forecasts for p_livre (Class I models)",
+    x = "Horizon",
+    y = "Forecasted Value"
+  )
