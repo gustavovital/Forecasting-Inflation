@@ -117,7 +117,14 @@ for (i in seq_along(forecast_starts)) {
   }
 }
 
-# forecast_df %>% tail()
-# readRDS('data/forecast_monthly_oos.rds') %>% tail()
+forecast_q <- forecast_df %>%
+  group_by(forecast_model, date, model) %>%
+  summarise(
+    mean_acc = (prod(1 + mean / 100) - 1) * 100,
+    lower_acc = (prod(1 + lower / 100) - 1) * 100,
+    upper_acc = (prod(1 + upper / 100) - 1) * 100,
+    .groups = "drop"
+  )
 
-saveRDS(forecast_df, file = "data/forecast_quarterly_oos.rds")
+saveRDS(forecast_df, file = "data/forecast_t.rds")
+saveRDS(forecast_q, file = "data/forecast_t_acc.rds")
