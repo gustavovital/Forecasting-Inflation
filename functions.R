@@ -40,6 +40,15 @@ acum_series <- function(data) {
     dplyr::select(date, !!sym(var_name))
 }
 
+acum_series_pct <- function(data) {
+  var_name <- names(data)[2]
+  data %>%
+    mutate(
+      !!sym(var_name) := (cumprod(1 + .data[[var_name]] / 100) - 1) * 100
+    ) %>%
+    dplyr::select(date, !!sym(var_name))
+}
+
 add_variable <- function(df, var_df, var_name) {
   var_df_renamed <- var_df %>%
     dplyr::select(date, !!sym(var_name)) %>%

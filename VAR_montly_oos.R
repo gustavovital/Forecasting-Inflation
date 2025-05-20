@@ -129,9 +129,28 @@ for (i in seq_along(forecast_starts)) {
   }
 }
 
-forecast_df <- forecast_df %>%
+forecast_m_acc <- forecast_df %>%
+  group_by(forecast_model, date, model) %>%
+  summarise(
+    date = min(date),  # data do início da previsão
+    mean_acc = (prod(1 + mean / 100) - 1) * 100,
+    lower_acc = (prod(1 + lower / 100) - 1) * 100,
+    upper_acc = (prod(1 + upper / 100) - 1) * 100,
+    .groups = "drop"
+  )
+
+forecast_m <- forecast_df
+forecast_m_t <- forecast_m %>%
   filter(month(date) %in% c(3, 6, 9, 12)) %>% 
   mutate(date = date %m-% months(2)) 
 
 
-saveRDS(forecast_df, file = "data/forecast_monthly_oos.rds")
+forecast_m_acc_t <- forecast_m_acc %>%
+  filter(month(date) %in% c(3, 6, 9, 12)) %>% 
+  mutate(date = date %m-% months(2)) 
+
+
+saveRDS(forecast_m, file = "data/forecast_m.rds")
+saveRDS(forecast_m_t, file = "data/forecast_m_t.rds")
+saveRDS(forecast_m_acc, file = "data/forecast_m_acc.rds")
+saveRDS(forecast_m_acc_t, file = "data/forecast_m_acc_t.rds")

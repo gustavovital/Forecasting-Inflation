@@ -15,7 +15,7 @@ data_statistic <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12
 p_livre <- g_series(11428, 'p_livre') 
 data_montly_d <- add_variable(data_montly_d, p_livre, "p_livre")
 
-p_livre_acum <- acum_series(p_livre)
+p_livre_acum <- acum_series_pct(p_livre)
 data_montly_l <- add_variable(data_montly_l, p_livre_acum, "p_livre")
 
 #...............................................................................
@@ -74,7 +74,6 @@ data_montly_d$selic <- diff(selic$valor[selic$date >= as.Date('2009-12-01')])
 # selic_a <- acum_series(selic)
 data_montly_l$selic <- selic$valor[selic$date >= as.Date('2010-01-01')]
 
-
 #...............................................................................
 #.......... r (real interest rate) ====
 #...............................................................................
@@ -113,7 +112,18 @@ saveRDS(data_montly_d, file = "data/data_montly_d.rds")
 #...............................................................................
 #.......... Preços Livres ====
 #...............................................................................
-p_livre_T <- to_quarterly(data_montly_d, p_livre)
+p_livret <- p_livre %>%
+  dplyr::filter(date >= as.Date('2010-01-01')) %>% 
+  mutate(quarter = floor_date(date, unit = "quarter")) %>%
+  group_by(quarter) %>%
+  summarise(
+    p_livre = sum(p_livre, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+p_livre_T <- tibble(date = p_livret$quarter,
+                    p_livre = p_livret$p_livre)
+
 p_livre_T_acum <- acum_series(p_livre_T)
 
 data_quarter_d$p_livre <- p_livre_T$p_livre
@@ -121,8 +131,17 @@ data_quarter_l$p_livre <- p_livre_T_acum$p_livre
 #...............................................................................
 #.......... Preços Administrados ====
 #...............................................................................
-p_admin_T <- to_quarterly(data_montly_d, p_admin)
-p_admin_T_acum <- acum_series(p_admin_T)
+p_admint <- p_admin %>%
+  dplyr::filter(date >= as.Date('2010-01-01')) %>% 
+  mutate(quarter = floor_date(date, unit = "quarter")) %>%
+  group_by(quarter) %>%
+  summarise(
+    p_admin = sum(p_admin, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+p_admin_T <- tibble(date = p_admint$quarter,
+                    p_admin = p_admint$p_admin)
 
 data_quarter_d$p_admin <- p_admin_T$p_admin
 
