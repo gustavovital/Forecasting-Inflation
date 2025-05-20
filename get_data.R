@@ -105,8 +105,8 @@ m1 <- g_series(27841, 'm1')
 data_montly_d$m1 <- diff(m1$m1)
 
 
-saveRDS(data_montly_l, file = "data/data_montly_l.rds")
-saveRDS(data_montly_d, file = "data/data_montly_d.rds")
+# saveRDS(data_montly_l, file = "data/data_montly_l.rds")
+# saveRDS(data_montly_d, file = "data/data_montly_d.rds")
 #...............................................................................
 # COMPONENTES TRIMESTRAIS ====
 #...............................................................................
@@ -207,8 +207,8 @@ risco <- full_join(selic, us3m, by = "date") %>%
 risco_T <- to_quarterly(risco, valor)
 data_quarter_d$embi <- risco_T$valor
 
-saveRDS(data_quarter_l, file = "data/data_quarter_l.rds")
-saveRDS(data_quarter_d, file = "data/data_quarter_d.rds")
+# saveRDS(data_quarter_l, file = "data/data_quarter_l.rds")
+# saveRDS(data_quarter_d, file = "data/data_quarter_d.rds")
 #...............................................................................
 # COMPONENTES ESTATISTICOS ====
 #...............................................................................
@@ -395,7 +395,7 @@ ipca_obs <- rbcb::get_series(433, start_date = "2009-12-01") %>%
   arrange(date) %>%
   mutate(ipca_3  = dplyr::lag(ipca, 3),
          ipca_12 = dplyr::lag(ipca, 12)) %>%
-  select(date, ipca_3, ipca_12)
+  dplyr::select(date, ipca_3, ipca_12)
 
 data_statistic <- data_statistic %>%
   left_join(ipca_obs, by = "date")
@@ -405,7 +405,7 @@ igpm_obs <- rbcb::get_series(189, start_date = "2009-12-01") %>%
   arrange(date) %>%
   mutate(igpm_3  = dplyr::lag(igpm, 3),
          igpm_12 = dplyr::lag(igpm, 12)) %>%
-  select(date, igpm_3, igpm_12)
+  dplyr::select(date, igpm_3, igpm_12)
 
 # Merge com base principal
 data_statistic <- data_statistic %>%
