@@ -132,7 +132,32 @@ for (start in forecast_starts) {
   forecast_count <- forecast_count + 1
 }
 
-# CLASS II
+forecast_stat_class1 <- bind_rows(forecast_stat_class1)
+
+forecast_s_acc <- forecast_stat_class1 %>%
+  group_by(forecast_model, date, strategy) %>%
+  summarise(
+    date = min(date),  # data do início da previsão
+    mean_acc = (prod(1 + mean / 100) - 1) * 100,
+    lower_acc = (prod(1 + lower / 100) - 1) * 100,
+    upper_acc = (prod(1 + upper / 100) - 1) * 100,
+    .groups = "drop"
+  )
+
+forecast_s <- forecast_stat_class1
+
+forecast_s_t <- forecast_s %>%
+  filter(month(date) %in% c(3, 6, 9, 12)) %>% 
+  mutate(date = date %m-% months(2)) 
+
+forecast_s_acc_t <- forecast_s_acc %>%
+  filter(month(date) %in% c(3, 6, 9, 12)) %>% 
+  mutate(date = date %m-% months(2)) 
+
+saveRDS(forecast_s, file = "data/forecast_s.rds")
+saveRDS(forecast_s_t, file = "data/forecast_s_t.rds")
+
+# CLASS II (still not estimated)
 
 grupo_combos <- combn(names(grupos), 3)
 
@@ -196,15 +221,6 @@ for (start in forecast_starts) {
 }
 
 # Final bind and format
-forecast_stat_class1 <- bind_rows(forecast_stat_class1)
-
-forecast_stat_class1 <- forecast_stat_class1  %>%
-  filter(month(date) %in% c(3, 6, 9, 12)) %>%
-  mutate(date = date %m-% months(2))
-
-forecast_stat_class1 <- forecast_stat_class1 %>% 
-  mutate(model_id = as.character(model_id))
-
 forecast_stat_class2 <- bind_rows(forecast_stat_class2)
 
 forecast_stat_class2 <- forecast_stat_class2  %>%
