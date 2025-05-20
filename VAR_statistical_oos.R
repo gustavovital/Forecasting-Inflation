@@ -157,7 +157,7 @@ forecast_s_acc_t <- forecast_s_acc %>%
 saveRDS(forecast_s, file = "data/forecast_s.rds")
 saveRDS(forecast_s_t, file = "data/forecast_s_t.rds")
 
-# CLASS II (still not estimated)
+# CLASS II (tbd)
 
 grupo_combos <- combn(names(grupos), 3)
 
