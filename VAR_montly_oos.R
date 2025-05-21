@@ -130,9 +130,11 @@ for (i in seq_along(forecast_starts)) {
 }
 
 forecast_m_acc <- forecast_df %>%
-  group_by(forecast_model, date, model) %>%
+  group_by(forecast_model, model) %>%
+  arrange(date) %>%
+  slice(1:12) %>%
   summarise(
-    date = min(date),  # data do início da previsão
+    date = min(date),  # forecast origin
     mean_acc = (prod(1 + mean / 100) - 1) * 100,
     lower_acc = (prod(1 + lower / 100) - 1) * 100,
     upper_acc = (prod(1 + upper / 100) - 1) * 100,
