@@ -1,10 +1,161 @@
 rm(list = ls())
 library(tidyverse)
 
-forecast_m <- readRDS('data/forecast_monthly_oos.rds')
-forecast_q <- readRDS('data/forecast_quarterly_oos.rds')
-forecast_c1 <- readRDS('data/forecast_class_I.rds')
-forecast_c2 <- readRDS('data/forecast_class_II.rds')
+# montly data ====
+# forecast_m <- readRDS('data/forecast_m.rds')
+forecast_m_t <- readRDS('data/forecast_m_t.rds')
+# forecast_m_acc <- readRDS('data/forecast_m_acc.rds')
+forecast_m_acc_t <- readRDS('data/forecast_m_acc_t.rds')
+
+# quarter data ====
+forecast_t <- readRDS('data/forecast_t.rds')
+forecast_t_acc <- readRDS('data/forecast_t_acc.rds')
+
+# stat data class I ====
+# forecast_c1 <- readRDS('data/forecast_c1.rds')
+forecast_c1_t <- readRDS('data/forecast_c1_t.rds')
+# forecast_c1_acc <- readRDS('data/forecast_c1_acc.rds')
+forecast_c1_acc_t <- readRDS('data/forecast_c1_acc_t.rds')
+
+# stat data class II ====
+forecast_c2 <- readRDS('data/forecast_c2.rds')
+forecast_c2_t <- readRDS('data/forecast_c2_t.rds')
+# forecast_c2_acc <- readRDS('data/forecast_c2_acc.rds')
+forecast_c2_acc_t <- readRDS('data/forecast_c2_acc_t.rds')
+
+# WRANGLING DATA ====
+# MONTLY ====
+compound_m_t_VAR <- forecast_m_t %>%
+  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+compound_m_t_BVAR <- forecast_m_t %>%
+  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# QUARTERLY DATA ====
+compound_t_VAR <- forecast_t %>%
+  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+compound_t_BVAR <- forecast_t %>%
+  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# STATISTICAL DATA ====
+compound_c1_t <- forecast_c1_t %>%
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+compound_c2_t <- forecast_c2_t %>%
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+# ACCUMULATED DATA WRANGLING ====
+# MONTLY ====
+compound_m_t_VAR <- forecast_m_acc_t %>%
+  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+compound_m_t_BVAR <- forecast_m_t %>%
+  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# QUARTERLY DATA ====
+compound_t_VAR <- forecast_t %>%
+  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+compound_t_BVAR <- forecast_t %>%
+  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+# STATISTICAL DATA ====
+compound_c1_t <- forecast_c1_t %>%
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+compound_c2_t <- forecast_c2_t %>%
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+
+
+
+
+
+
+
 
 # Wrangling ====
 compound_mv <- forecast_m %>%
