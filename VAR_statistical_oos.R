@@ -133,29 +133,33 @@ for (start in forecast_starts) {
 }
 
 forecast_stat_class1 <- bind_rows(forecast_stat_class1)
+forecast_c1 <- forecast_stat_class1
 
-forecast_s_acc <- forecast_stat_class1 %>%
-  group_by(forecast_model, date, strategy) %>%
+forecast_c1_acc <- forecast_stat_class1 %>%
+  group_by(forecast_model, model_id, strategy) %>%
+  arrange(date) %>%
+  slice(1:12) %>%
   summarise(
-    date = min(date),  # data do início da previsão
+    date = min(date),  # This is the origin of the forecast
     mean_acc = (prod(1 + mean / 100) - 1) * 100,
     lower_acc = (prod(1 + lower / 100) - 1) * 100,
     upper_acc = (prod(1 + upper / 100) - 1) * 100,
     .groups = "drop"
   )
 
-forecast_s <- forecast_stat_class1
 
-forecast_s_t <- forecast_s %>%
+forecast_c1_t <- forecast_c1 %>%
   filter(month(date) %in% c(3, 6, 9, 12)) %>% 
   mutate(date = date %m-% months(2)) 
 
-forecast_s_acc_t <- forecast_s_acc %>%
+forecast_c1_acc_t <- forecast_c1_acc %>%
   filter(month(date) %in% c(3, 6, 9, 12)) %>% 
   mutate(date = date %m-% months(2)) 
 
-saveRDS(forecast_s, file = "data/forecast_s.rds")
-saveRDS(forecast_s_t, file = "data/forecast_s_t.rds")
+saveRDS(forecast_c1, file = "data/forecast_c1.rds")
+saveRDS(forecast_c1_acc, file = "data/forecast_c1_acc.rds")
+saveRDS(forecast_c1_t, file = "data/forecast_c1_t.rds")
+saveRDS(forecast_c1_acc_t, file = "data/forecast_c1_acc_t.rds")
 
 # CLASS II (tbd)
 
@@ -220,46 +224,32 @@ for (start in forecast_starts) {
   forecast_count <- forecast_count + 1
 }
 
-# Final bind and format
+####
 forecast_stat_class2 <- bind_rows(forecast_stat_class2)
+forecast_c2 <- forecast_stat_class2
 
-forecast_stat_class2 <- forecast_stat_class2  %>%
-  filter(month(date) %in% c(3, 6, 9, 12)) %>%
-  mutate(date = date %m-% months(2))
-
-forecast_stat_class2 <- forecast_stat_class2 %>% 
-  mutate(model_id = as.character(model_id))
-
-
-component_I <- forecast_stat_class1 %>%
-  group_by(forecast_model, date) %>%
+forecast_c2_acc <- forecast_stat_class2 %>%
+  group_by(forecast_model, model_id, strategy) %>%
+  arrange(date) %>%
+  slice(1:12) %>%
   summarise(
-    model_id = "COMPONENT I",
-    strategy = NA,
-    lags     = NA,
-    mean     = median(mean, na.rm = TRUE),
-    lower    = median(lower, na.rm = TRUE),
-    upper    = median(upper, na.rm = TRUE),
-    class    = "COMPONENT I",
-    .groups  = "drop"
+    date = min(date),  # This is the origin of the forecast
+    mean_acc = (prod(1 + mean / 100) - 1) * 100,
+    lower_acc = (prod(1 + lower / 100) - 1) * 100,
+    upper_acc = (prod(1 + upper / 100) - 1) * 100,
+    .groups = "drop"
   )
 
-component_II <- forecast_stat_class2 %>%
-  group_by(forecast_model, date) %>%
-  summarise(
-    model_id = "COMPONENT I",
-    strategy = NA,
-    lags     = NA,
-    mean     = median(mean, na.rm = TRUE),
-    lower    = median(lower, na.rm = TRUE),
-    upper    = median(upper, na.rm = TRUE),
-    class    = "COMPONENT I",
-    .groups  = "drop"
-  )
 
-forecast_stat_class1 <- bind_rows(forecast_stat_class1, component_I)
-forecast_stat_class2 <- bind_rows(forecast_stat_class2, component_II)
+forecast_c2_t <- forecast_c2 %>%
+  filter(month(date) %in% c(3, 6, 9, 12)) %>% 
+  mutate(date = date %m-% months(2)) 
 
-# Salvar
-saveRDS(forecast_stat_class1, file = "data/forecast_class_I.rds")
-saveRDS(forecast_stat_class2, file = "data/forecast_class_II.rds")
+forecast_c2_acc_t <- forecast_c2_acc %>%
+  filter(month(date) %in% c(3, 6, 9, 12)) %>% 
+  mutate(date = date %m-% months(2)) 
+
+saveRDS(forecast_c2, file = "data/forecast_c1.rds")
+saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
+saveRDS(forecast_c2_t, file = "data/forecast_c2_t.rds")
+saveRDS(forecast_c2_acc_t, file = "data/forecast_c2_acc_t.rds")
