@@ -129,27 +129,40 @@ for (i in seq_along(forecast_starts)) {
   }
 }
 
-forecast_m_acc <- forecast_df %>%
+forecast_m <- forecast_df
+
+forecast_m_acc <- forecast_m %>%
   group_by(forecast_model, model) %>%
   arrange(date) %>%
   slice(1:12) %>%
   summarise(
     date = min(date),  # forecast origin
-    mean_acc = (prod(1 + mean / 100) - 1) * 100,
-    lower_acc = (prod(1 + lower / 100) - 1) * 100,
-    upper_acc = (prod(1 + upper / 100) - 1) * 100,
+    mean = (prod(1 + mean / 100) - 1) * 100,
+    lower = (prod(1 + lower / 100) - 1) * 100,
+    upper = (prod(1 + upper / 100) - 1) * 100,
     .groups = "drop"
   )
 
-forecast_m <- forecast_df
-forecast_m_t <- forecast_m %>%
-  filter(month(date) %in% c(3, 6, 9, 12)) %>% 
-  mutate(date = date %m-% months(2)) 
 
+forecast_m_t <- forecast_m %>% 
+  mutate(date = floor_date(date, unit = "quarter")) %>%
+  group_by(forecast_model, model, date) %>%
+  summarise(
+    mean = (prod(1 + mean / 100) - 1) * 100,
+    lower = (prod(1 + lower / 100) - 1) * 100,
+    upper = (prod(1 + upper / 100) - 1) * 100,
+    .groups = "drop"
+  )
 
-forecast_m_acc_t <- forecast_m_acc %>%
-  filter(month(date) %in% c(3, 6, 9, 12)) %>% 
-  mutate(date = date %m-% months(2)) 
+forecast_m_acc_t <- forecast_m_acc %>% 
+  mutate(date = floor_date(date, unit = "quarter")) %>%
+  group_by(forecast_model, model, date) %>%
+  summarise(
+    mean = (prod(1 + mean / 100) - 1) * 100,
+    lower = (prod(1 + lower / 100) - 1) * 100,
+    upper = (prod(1 + upper / 100) - 1) * 100,
+    .groups = "drop"
+  )
 
 
 saveRDS(forecast_m, file = "data/forecast_m.rds")
