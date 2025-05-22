@@ -117,14 +117,18 @@ for (i in seq_along(forecast_starts)) {
   }
 }
 
-forecast_q <- forecast_df %>%
-  group_by(forecast_model, date, model) %>%
+forecast_t_acc <- forecast_df %>%
+  group_by(forecast_model, model, date) %>%
+  arrange(date) %>%
+  slice(1:4) %>%  # 4 quarters ahead
   summarise(
-    mean_acc = (prod(1 + mean / 100) - 1) * 100,
+    date = min(date),  # origin of forecast
+    mean_acc  = (prod(1 + mean  / 100) - 1) * 100,
     lower_acc = (prod(1 + lower / 100) - 1) * 100,
     upper_acc = (prod(1 + upper / 100) - 1) * 100,
     .groups = "drop"
-  )
+  ) 
 
+# forecast_df <- readRDS("data/forecast_t.rds")
 saveRDS(forecast_df, file = "data/forecast_t.rds")
-saveRDS(forecast_q, file = "data/forecast_t_acc.rds")
+saveRDS(forecast_t_acc, file = "data/forecast_t_acc.rds")

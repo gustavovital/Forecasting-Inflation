@@ -18,7 +18,7 @@ forecast_c1_t <- readRDS('data/forecast_c1_t.rds')
 forecast_c1_acc_t <- readRDS('data/forecast_c1_acc_t.rds')
 
 # stat data class II ====
-forecast_c2 <- readRDS('data/forecast_c2.rds')
+# forecast_c2 <- readRDS('data/forecast_c2.rds')
 forecast_c2_t <- readRDS('data/forecast_c2_t.rds')
 # forecast_c2_acc <- readRDS('data/forecast_c2_acc.rds')
 forecast_c2_acc_t <- readRDS('data/forecast_c2_acc_t.rds')
@@ -26,7 +26,7 @@ forecast_c2_acc_t <- readRDS('data/forecast_c2_acc_t.rds')
 # WRANGLING DATA ====
 # MONTLY ====
 compound_m_t_VAR <- forecast_m_t %>%
-  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
   group_by(forecast_model, date) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
@@ -36,7 +36,7 @@ compound_m_t_VAR <- forecast_m_t %>%
   )
 
 compound_m_t_BVAR <- forecast_m_t %>%
-  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  filter(!model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
   group_by(forecast_model, date) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
@@ -47,7 +47,7 @@ compound_m_t_BVAR <- forecast_m_t %>%
 
 # QUARTERLY DATA ====
 compound_t_VAR <- forecast_t %>%
-  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
   group_by(forecast_model, date) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
@@ -57,7 +57,7 @@ compound_t_VAR <- forecast_t %>%
   )
 
 compound_t_BVAR <- forecast_t %>%
-  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+  filter(!model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
   group_by(forecast_model, date) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
@@ -88,9 +88,9 @@ compound_c2_t <- forecast_c2_t %>%
 
 # ACCUMULATED DATA WRANGLING ====
 # MONTLY ====
-compound_m_t_VAR <- forecast_m_acc_t %>%
-  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
-  group_by(forecast_model, date) %>%
+compound_m_t_VAR_acc <- forecast_m_acc_t %>%
+  filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
+  group_by(forecast_model, date, model) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
     lower = median(lower, na.rm = TRUE),
@@ -98,9 +98,9 @@ compound_m_t_VAR <- forecast_m_acc_t %>%
     .groups = "drop"
   )
 
-compound_m_t_BVAR <- forecast_m_t %>%
-  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
-  group_by(forecast_model, date) %>%
+compound_m_t_BVAR_acc <- forecast_m_acc_t %>%
+  filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
+  group_by(forecast_model, date, model) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
     lower = median(lower, na.rm = TRUE),
@@ -109,28 +109,28 @@ compound_m_t_BVAR <- forecast_m_t %>%
   )
 
 # QUARTERLY DATA ====
-compound_t_VAR <- forecast_t %>%
-  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
-  group_by(forecast_model, date) %>%
+compound_t_VAR_acc <- forecast_t_acc %>%
+  filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
+  group_by(forecast_model, date, model) %>%
   summarise(
-    mean  = median(mean, na.rm = TRUE),
-    lower = median(lower, na.rm = TRUE),
-    upper = median(upper, na.rm = TRUE),
+    mean  = median(mean_acc, na.rm = TRUE),
+    lower = median(lower_acc, na.rm = TRUE),
+    upper = median(upper_acc, na.rm = TRUE),
     .groups = "drop"
   )
 
-compound_t_BVAR <- forecast_t %>%
-  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
+compound_t_BVAR_acc <- forecast_t_acc %>%
+  filter(!model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
   group_by(forecast_model, date) %>%
   summarise(
-    mean  = median(mean, na.rm = TRUE),
-    lower = median(lower, na.rm = TRUE),
-    upper = median(upper, na.rm = TRUE),
+    mean  = median(mean_acc, na.rm = TRUE),
+    lower = median(lower_acc, na.rm = TRUE),
+    upper = median(upper_acc, na.rm = TRUE),
     .groups = "drop"
   )
 
 # STATISTICAL DATA ====
-compound_c1_t <- forecast_c1_t %>%
+compound_c1_t_acc <- forecast_c1_acc_t %>%
   group_by(forecast_model, date) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
@@ -139,7 +139,7 @@ compound_c1_t <- forecast_c1_t %>%
     .groups = "drop"
   )
 
-compound_c2_t <- forecast_c2_t %>%
+compound_c2_t_acc <- forecast_c2_acc_t %>%
   group_by(forecast_model, date) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
@@ -147,67 +147,23 @@ compound_c2_t <- forecast_c2_t %>%
     upper = median(upper, na.rm = TRUE),
     .groups = "drop"
   )
-
-
-
-
-
-
-
-
-
-
-# Wrangling ====
-compound_mv <- forecast_m %>%
-  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
-  group_by(forecast_model, date) %>%
-  summarise(
-    mean  = median(mean, na.rm = TRUE),
-    lower = median(lower, na.rm = TRUE),
-    upper = median(upper, na.rm = TRUE),
-    .groups = "drop"
-  )
-
-compound_mb <- forecast_m %>%
-  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
-  group_by(forecast_model, date) %>%
-  summarise(
-    mean  = median(mean, na.rm = TRUE),
-    lower = median(lower, na.rm = TRUE),
-    upper = median(upper, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-compound_qv <- forecast_q %>%
-  filter(model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
-  group_by(forecast_model, date) %>%
-  summarise(
-    mean  = median(mean, na.rm = TRUE),
-    lower = median(lower, na.rm = TRUE),
-    upper = median(upper, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-compound_qb <- forecast_q %>%
-  filter(!model %in% c('VAR_I', 'VAR_2', 'VAR_3', 'VECM')) %>% 
-  group_by(forecast_model, date) %>%
-  summarise(
-    mean  = median(mean, na.rm = TRUE),
-    lower = median(lower, na.rm = TRUE),
-    upper = median(upper, na.rm = TRUE),
-    .groups = "drop"
-  ) 
-
-compound_c1 <- forecast_c1 %>% filter(class == 'COMPONENT I')
-compound_c2 <- forecast_c2 %>% filter(class == 'COMPONENT I')
 
 # Create compound VAR ====
-compound_c1$COMPOUND <- "CLASS I"
-compound_c2$COMPOUND <- "CLASS II"
-compound_mv$COMPOUND <- "Montly VAR VECM"
-compound_mb$COMPOUND <- "Montly BVAR"
-compound_qv$COMPOUND <- "Quarterly VAR VECM"
-compound_qb$COMPOUND <- "Quarterly BVAR"
+compound_c1_t$COMPOUND <- "CLASS I"
+compound_c2_t$COMPOUND <- "CLASS II"
+compound_m_t_VAR$COMPOUND <- "VAR VECM - M"
+compound_m_t_BVAR$COMPOUND <- "BVAR - M"
+compound_t_VAR$COMPOUND <- "VAR/VECM - Q"
+compound_t_BVAR$COMPOUND <- "BVAR - Q"
+
+# Accumulated 
+compound_c1_t_acc$COMPOUND <- "CLASS I"
+compound_c2_t_acc$COMPOUND <- "CLASS II"
+compound_m_t_VAR_acc$COMPOUND <- "VAR VECM - M"
+compound_m_t_BVAR_acc$COMPOUND <- "BVAR - M"
+compound_t_VAR_acc$COMPOUND <- "VAR/VECM - Q"
+compound_t_BVAR_acc$COMPOUND <- "BVAR - Q"
+
 
 compound_var <- tibble(
      date = c(compound_c1$date, compound_c2$date, compound_mv$date, compound_mb$date, compound_qv$date, compound_qb$date),
