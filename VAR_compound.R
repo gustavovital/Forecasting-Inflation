@@ -90,7 +90,7 @@ compound_c2_t <- forecast_c2_t %>%
 # MONTLY ====
 compound_m_t_VAR_acc <- forecast_m_acc_t %>%
   filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
-  group_by(forecast_model, date, model) %>%
+  group_by(forecast_model, date) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
     lower = median(lower, na.rm = TRUE),
@@ -99,8 +99,8 @@ compound_m_t_VAR_acc <- forecast_m_acc_t %>%
   )
 
 compound_m_t_BVAR_acc <- forecast_m_acc_t %>%
-  filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
-  group_by(forecast_model, date, model) %>%
+  filter(model %in% c('BVAR_I', 'BVAR_II', 'BVAR_III')) %>% 
+  group_by(forecast_model, date) %>%
   summarise(
     mean  = median(mean, na.rm = TRUE),
     lower = median(lower, na.rm = TRUE),
@@ -111,7 +111,7 @@ compound_m_t_BVAR_acc <- forecast_m_acc_t %>%
 # QUARTERLY DATA ====
 compound_t_VAR_acc <- forecast_t_acc %>%
   filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
-  group_by(forecast_model, date, model) %>%
+  group_by(forecast_model, date) %>%
   summarise(
     mean  = median(mean_acc, na.rm = TRUE),
     lower = median(lower_acc, na.rm = TRUE),
@@ -156,6 +156,12 @@ compound_m_t_BVAR$COMPOUND <- "BVAR - M"
 compound_t_VAR$COMPOUND <- "VAR/VECM - Q"
 compound_t_BVAR$COMPOUND <- "BVAR - Q"
 
+compound_diff <- bind_rows(compound_c1_t, 
+                           compound_c2_t,
+                           compound_m_t_VAR,
+                           compound_m_t_BVAR,
+                           compound_t_VAR,
+                           compound_t_BVAR)
 # Accumulated 
 compound_c1_t_acc$COMPOUND <- "CLASS I"
 compound_c2_t_acc$COMPOUND <- "CLASS II"
@@ -164,37 +170,46 @@ compound_m_t_BVAR_acc$COMPOUND <- "BVAR - M"
 compound_t_VAR_acc$COMPOUND <- "VAR/VECM - Q"
 compound_t_BVAR_acc$COMPOUND <- "BVAR - Q"
 
+compound_acc <- bind_rows(compound_c1_t_acc, 
+                           compound_c2_t_acc,
+                           compound_m_t_VAR_acc,
+                           compound_m_t_BVAR_acc,
+                           compound_t_VAR_acc,
+                           compound_t_BVAR_acc)
 
-compound_var <- tibble(
-     date = c(compound_c1$date, compound_c2$date, compound_mv$date, compound_mb$date, compound_qv$date, compound_qb$date),
-     mean = c(compound_c1$mean, compound_c2$mean, compound_mv$mean, compound_mb$mean, compound_qv$mean, compound_qb$mean),
-     `Forecast Model` = c(compound_c1$forecast_model, compound_c2$forecast_model, compound_mv$forecast_model, compound_mb$forecast_model, compound_qv$forecast_model, compound_qb$forecast_model),
-     Compound = c(compound_c1$COMPOUND, compound_c2$COMPOUND, compound_mv$COMPOUND, compound_mb$COMPOUND, compound_qv$COMPOUND, compound_qb$COMPOUND)
-)
-
-compound <- compound_var %>% 
-  group_by(date, `Forecast Model`) %>% 
+mean_diff <- compound_diff %>% 
+  group_by(forecast_model, date) %>% 
   summarise(
     mean  = mean(mean, na.rm = TRUE),
+    lower  = mean(lower, na.rm = TRUE),
+    upper  = mean(upper, na.rm = TRUE),
     .groups = "drop"
   ) 
 
-compound$Compound <- 'AVERAGE MODEL'
-compound_var <- bind_rows(compound_var, compound)
+mean_diff$COMPOUND <- 'AVERAGE MODEL'
 
-saveRDS(compound_var, file = "data/forecast_compound.rds")
+# acc ====
+mean_acc <- compound_acc %>% 
+  group_by(forecast_model, date) %>% 
+  summarise(
+    mean  = mean(mean, na.rm = TRUE),
+    lower  = mean(lower, na.rm = TRUE),
+    upper  = mean(upper, na.rm = TRUE),
+    .groups = "drop"
+  ) 
+
+mean_acc$COMPOUND <- 'AVERAGE MODEL'
+
+# last wrangling ====
+compound_diff <- bind_rows(compound_diff, mean_diff)
+compound_acc <- bind_rows(compound_acc, mean_acc)
+
+# saveRDS(compound_var, file = "data/forecast_compound.rds")
 
 # Acumulado ====
-p_livre_obs <- readRDS("data/data_montly_l.rds") %>%
-  dplyr::select(date, p_livre) 
+# p_livre_obs <- readRDS("data/data_montly_l.rds") %>%
+#   dplyr::select(date, p_livre) 
 
-compound_accum <- compound_var %>%
-  arrange(Compound, `Forecast Model`, date) %>%
-  group_by(Compound, `Forecast Model`) %>%
-  mutate(
-    mean_acc  = cumsum(mean),
-  ) %>%
-  ungroup()
-
-saveRDS(p_livre_obs, file = "data/p_livre.rds")
-saveRDS(compound_accum, file = "data/forecast_compound_accum.rds")
+# saveRDS(p_livre_obs, file = "data/p_livre.rds")
+saveRDS(compound_acc, file = "data/forecast_compound_acc.rds")
+saveRDS(compound_diff, file = "data/forecast_compound_diff.rds")

@@ -136,7 +136,7 @@ forecast_stat_class1 <- bind_rows(forecast_stat_class1)
 forecast_c1 <- forecast_stat_class1
 
 forecast_c1_acc <- forecast_c1 %>%
-  group_by(forecast_model, model_id, strategy) %>%
+  group_by(forecast_model, date, strategy) %>%
   arrange(date) %>%
   slice(1:12) %>%
   summarise(
@@ -146,11 +146,6 @@ forecast_c1_acc <- forecast_c1 %>%
     upper = (prod(1 + upper / 100) - 1) * 100,
     .groups = "drop"
   )
-
-
-# forecast_c1_t <- forecast_c1 %>%
-#   filter(month(date) %in% c(3, 6, 9, 12)) %>% 
-#   mutate(date = date %m-% months(2)) 
 
 forecast_c1_t <- forecast_c1 %>%
   mutate(date = floor_date(date, unit = "quarter")) %>%
@@ -164,7 +159,7 @@ forecast_c1_t <- forecast_c1 %>%
 
 forecast_c1_acc_t <- forecast_c1_acc %>%
   mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, model_id, strategy, date) %>%
+  group_by(forecast_model, date, strategy) %>%
   summarise(
     mean = (prod(1 + mean / 100) - 1) * 100,
     lower = (prod(1 + lower / 100) - 1) * 100,
@@ -172,6 +167,7 @@ forecast_c1_acc_t <- forecast_c1_acc %>%
     .groups = "drop"
   )
 
+# forecast_c1 <- readRDS("data/forecast_c1.rds")
 saveRDS(forecast_c1, file = "data/forecast_c1.rds")
 saveRDS(forecast_c1_acc, file = "data/forecast_c1_acc.rds")
 saveRDS(forecast_c1_t, file = "data/forecast_c1_t.rds")
@@ -244,7 +240,7 @@ forecast_stat_class2 <- bind_rows(forecast_stat_class2)
 forecast_c2 <- forecast_stat_class2
 
 forecast_c2_acc <- forecast_c2 %>%
-  group_by(forecast_model, model_id, strategy) %>%
+  group_by(forecast_model, date, strategy) %>%
   arrange(date) %>%
   slice(1:12) %>%
   summarise(
@@ -267,7 +263,7 @@ forecast_c2_t <- forecast_c2 %>%
 
 forecast_c2_acc_t <- forecast_c2_acc %>%
   mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, model_id, strategy, date) %>%
+  group_by(forecast_model, strategy, date) %>%
   summarise(
     mean = (prod(1 + mean / 100) - 1) * 100,
     lower = (prod(1 + lower / 100) - 1) * 100,
@@ -275,6 +271,7 @@ forecast_c2_acc_t <- forecast_c2_acc %>%
     .groups = "drop"
   )
 
+# forecast_c2 <- readRDS("data/forecast_c2.rds")
 saveRDS(forecast_c2, file = "data/forecast_c2.rds")
 saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
 saveRDS(forecast_c2_t, file = "data/forecast_c2_t.rds")
