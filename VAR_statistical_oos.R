@@ -135,6 +135,9 @@ for (start in forecast_starts) {
 forecast_stat_class1 <- bind_rows(forecast_stat_class1)
 forecast_c1 <- forecast_stat_class1
 
+#...............................................................................
+# REDO CALCULATIONS WITH IPCA LIVRE
+#...............................................................................
 forecast_c1_acc <- forecast_c1 %>%
   group_by(forecast_model, date, strategy) %>%
   arrange(date) %>%
@@ -149,29 +152,29 @@ forecast_c1_acc <- forecast_c1 %>%
 
 forecast_c1_t <- forecast_c1 %>%
   mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, model_id, strategy, date) %>%
+  group_by(forecast_model, strategy, date) %>%
   summarise(
-    mean = (prod(1 + mean / 100) - 1) * 100,
-    lower = (prod(1 + lower / 100) - 1) * 100,
-    upper = (prod(1 + upper / 100) - 1) * 100,
+    mean  = mean(mean, na.rm = TRUE),
+    lower = mean(lower, na.rm = TRUE),
+    upper = mean(upper, na.rm = TRUE),
     .groups = "drop"
   )
 
 forecast_c1_acc_t <- forecast_c1_acc %>%
   mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, date, strategy) %>%
+  group_by(forecast_model, strategy, date) %>%
   summarise(
-    mean = (prod(1 + mean / 100) - 1) * 100,
-    lower = (prod(1 + lower / 100) - 1) * 100,
-    upper = (prod(1 + upper / 100) - 1) * 100,
+    mean = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
     .groups = "drop"
   )
 
 # forecast_c1 <- readRDS("data/forecast_c1.rds")
-saveRDS(forecast_c1, file = "data/forecast_c1.rds")
-saveRDS(forecast_c1_acc, file = "data/forecast_c1_acc.rds")
-saveRDS(forecast_c1_t, file = "data/forecast_c1_t.rds")
-saveRDS(forecast_c1_acc_t, file = "data/forecast_c1_acc_t.rds")
+saveRDS(forecast_c1, file = "data/forecast_c1.rds") # all forecasts for differentiated series
+saveRDS(forecast_c1_acc, file = "data/forecast_c1_acc.rds") # accumulated forecast for diff series
+saveRDS(forecast_c1_t, file = "data/forecast_c1_t.rds") # diff forecast quarterly
+saveRDS(forecast_c1_acc_t, file = "data/forecast_c1_acc_t.rds") # accumulated quarterly
 
 # CLASS II (tbd)
 
@@ -239,25 +242,70 @@ for (start in forecast_starts) {
 forecast_stat_class2 <- bind_rows(forecast_stat_class2)
 forecast_c2 <- forecast_stat_class2
 
-forecast_c2_acc <- forecast_c2 %>%
-  group_by(forecast_model, date, strategy) %>%
+#...............................................................................
+# REDO CALCULATIONS WITH IPCA LIVRE
+#...............................................................................
+# What to do? get he last value of p_livre and accumulate over it!! Only way 
+# to do it. DO it after the wedding. MAYBE monday??? 
+
+# forecast_c2_acc <- forecast_c2 %>%
+# forecast_c2 %>%
+#   group_by(forecast_model, date, strategy) %>%
+#   arrange(date) %>%
+#   slice(1:12) %>%
+#   summarise(
+#     date = min(date),  # This is the origin of the forecast
+#     mean = (prod(1 + mean / 100) - 1) * 100,
+#     lower = (prod(1 + lower / 100) - 1) * 100,
+#     upper = (prod(1 + upper / 100) - 1) * 100,
+#     .groups = "drop"
+#   )
+
+NEW_forecast_c2_median <- forecast_c2 %>%
+  group_by(forecast_model, date) %>%
   arrange(date) %>%
   slice(1:12) %>%
   summarise(
-    date = min(date),  # This is the origin of the forecast
-    mean = (prod(1 + mean / 100) - 1) * 100,
-    lower = (prod(1 + lower / 100) - 1) * 100,
-    upper = (prod(1 + upper / 100) - 1) * 100,
+    date = min(date),
+    mean = median(mean),
+    lower = median(lower),
+    upper = median(upper),
     .groups = "drop"
   )
 
+
+NEW_forecast_c2_t_acc <- NEW_forecast_c2_median %>%
+  arrange(forecast_model, date) %>%
+  group_by(forecast_model) %>%
+  mutate(
+    mean  = (cumprod(1 + mean  / 100) - 1) * 100,
+    lower = (cumprod(1 + lower / 100) - 1) * 100,
+    upper = (cumprod(1 + upper / 100) - 1) * 100
+  ) %>%
+  ungroup()
+  
+NEW_forecast_c2_t_acc %>%
+  mutate(date = floor_date(date, unit = "quarter")) %>%
+  group_by(forecast_model, date) %>%
+  summarise(
+    mean  = mean(mean, na.rm = TRUE),
+    lower = mean(lower, na.rm = TRUE),
+    upper = mean(upper, na.rm = TRUE),
+    .groups = "drop"
+  )
+
+
+
+prod(1 + forecast_c2$mean / 100)*100
+  
+  
 forecast_c2_t <- forecast_c2 %>%
   mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, model_id, strategy, date) %>%
+  group_by(forecast_model, strategy, date) %>%
   summarise(
-    mean = (prod(1 + mean / 100) - 1) * 100,
-    lower = (prod(1 + lower / 100) - 1) * 100,
-    upper = (prod(1 + upper / 100) - 1) * 100,
+    mean  = mean(mean, na.rm = TRUE),
+    lower = mean(lower, na.rm = TRUE),
+    upper = mean(upper, na.rm = TRUE),
     .groups = "drop"
   )
 
@@ -265,9 +313,9 @@ forecast_c2_acc_t <- forecast_c2_acc %>%
   mutate(date = floor_date(date, unit = "quarter")) %>%
   group_by(forecast_model, strategy, date) %>%
   summarise(
-    mean = (prod(1 + mean / 100) - 1) * 100,
-    lower = (prod(1 + lower / 100) - 1) * 100,
-    upper = (prod(1 + upper / 100) - 1) * 100,
+    mean = median(mean, na.rm = TRUE),
+    lower = median(lower, na.rm = TRUE),
+    upper = median(upper, na.rm = TRUE),
     .groups = "drop"
   )
 
@@ -276,33 +324,3 @@ saveRDS(forecast_c2, file = "data/forecast_c2.rds")
 saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
 saveRDS(forecast_c2_t, file = "data/forecast_c2_t.rds")
 saveRDS(forecast_c2_acc_t, file = "data/forecast_c2_acc_t.rds")
-
-########
-# forecast_stat_class2 <- bind_rows(forecast_stat_class2)
-# forecast_c2 <- forecast_stat_class2
-# 
-# forecast_c2_acc <- forecast_stat_class2 %>%
-#   group_by(forecast_model, model_id, strategy) %>%
-#   arrange(date) %>%
-#   slice(1:12) %>%
-#   summarise(
-#     date = min(date),  # This is the origin of the forecast
-#     mean_acc = (prod(1 + mean / 100) - 1) * 100,
-#     lower_acc = (prod(1 + lower / 100) - 1) * 100,
-#     upper_acc = (prod(1 + upper / 100) - 1) * 100,
-#     .groups = "drop"
-#   )
-# 
-# 
-# forecast_c2_t <- forecast_c2 %>%
-#   filter(month(date) %in% c(3, 6, 9, 12)) %>% 
-#   mutate(date = date %m-% months(2)) 
-# 
-# forecast_c2_acc_t <- forecast_c2_acc %>%
-#   filter(month(date) %in% c(3, 6, 9, 12)) %>% 
-#   mutate(date = date %m-% months(2)) 
-# 
-# saveRDS(forecast_c2, file = "data/forecast_c1.rds")
-# saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
-# saveRDS(forecast_c2_t, file = "data/forecast_c2_t.rds")
-# saveRDS(forecast_c2_acc_t, file = "data/forecast_c2_acc_t.rds")
