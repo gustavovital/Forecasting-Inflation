@@ -207,7 +207,7 @@ compound_acc <- bind_rows(compound_acc, mean_acc)
 # saveRDS(compound_var, file = "data/forecast_compound.rds")
 
 # Acumulado ====
-# p_livre_obs <- readRDS("data/data_montly_l.rds") %>%
+p_livre_obs <- readRDS("data/data_montly_l.rds") %>%
 #   dplyr::select(date, p_livre) 
 
 # saveRDS(p_livre_obs, file = "data/p_livre.rds")
