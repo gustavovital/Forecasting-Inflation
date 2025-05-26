@@ -138,43 +138,68 @@ forecast_c1 <- forecast_stat_class1
 #...............................................................................
 # REDO CALCULATIONS WITH IPCA LIVRE
 #...............................................................................
-forecast_c1_acc <- forecast_c1 %>%
-  group_by(forecast_model, date, strategy) %>%
-  arrange(date) %>%
-  slice(1:12) %>%
-  summarise(
-    date = min(date),  # This is the origin of the forecast
-    mean = (prod(1 + mean / 100) - 1) * 100,
-    lower = (prod(1 + lower / 100) - 1) * 100,
-    upper = (prod(1 + upper / 100) - 1) * 100,
-    .groups = "drop"
-  )
+# forecast_c1_acc <- forecast_c1 %>%
+#   group_by(forecast_model, date, strategy) %>%
+#   arrange(date) %>%
+#   slice(1:12) %>%
+#   summarise(
+#     date = min(date),  # This is the origin of the forecast
+#     mean = (prod(1 + mean / 100) - 1) * 100,
+#     lower = (prod(1 + lower / 100) - 1) * 100,
+#     upper = (prod(1 + upper / 100) - 1) * 100,
+#     .groups = "drop"
+#   )
+
+# forecast_c1_t <- forecast_c1 %>%
+#   mutate(date = floor_date(date, unit = "quarter")) %>%
+#   group_by(forecast_model, strategy, date) %>%
+#   summarise(
+#     mean  = mean(mean, na.rm = TRUE),
+#     lower = mean(lower, na.rm = TRUE),
+#     upper = mean(upper, na.rm = TRUE),
+#     .groups = "drop"
+#   )
 
 forecast_c1_t <- forecast_c1 %>%
-  mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, strategy, date) %>%
-  summarise(
-    mean  = mean(mean, na.rm = TRUE),
-    lower = mean(lower, na.rm = TRUE),
-    upper = mean(upper, na.rm = TRUE),
+  # 1. Convert percentages to decimals (if needed)
+  mutate(
+    mean = mean / 100,  # Only if your data is in raw % (e.g., 50% = 50, not 0.50)
+    lower = lower / 100,
+    upper = upper / 100
+  ) %>%
+  # 2. Extract year and quarter, then convert to R Date (first day of quarter)
+  mutate(
+    year = year(date),
+    quarter = quarter(date),
+    date = ymd(paste(year, 3 * quarter - 2, "01", sep = "-"))  # e.g., "2023-1-01" → "2023-01-01"
+  ) %>%
+  # 3. Group by all identifiers + quarter_date
+  group_by(forecast_model, strategy, lags, class, date) %>%
+  # 4. Calculate quarterly metrics
+  summarize(
+    quarterly_mean = prod(1 + mean, na.rm = TRUE) - 1,  # Chain-linked growth
+    quarterly_lower = mean(lower, na.rm = TRUE),
+    quarterly_upper = mean(upper, na.rm = TRUE),
     .groups = "drop"
   )
 
-forecast_c1_acc_t <- forecast_c1_acc %>%
-  mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, strategy, date) %>%
-  summarise(
-    mean = median(mean, na.rm = TRUE),
-    lower = median(lower, na.rm = TRUE),
-    upper = median(upper, na.rm = TRUE),
-    .groups = "drop"
-  )
+
+# forecast_c1_acc_t <- forecast_c1_acc %>%
+#   mutate(date = floor_date(date, unit = "quarter")) %>%
+#   group_by(forecast_model, strategy, date) %>%
+#   summarise(
+#     mean = median(mean, na.rm = TRUE),
+#     lower = median(lower, na.rm = TRUE),
+#     upper = median(upper, na.rm = TRUE),
+#     .groups = "drop"
+#   )
 
 # forecast_c1 <- readRDS("data/forecast_c1.rds")
+# forecast_c1_t <- readRDS("data/forecast_c1_t.rds")
 saveRDS(forecast_c1, file = "data/forecast_c1.rds") # all forecasts for differentiated series
-saveRDS(forecast_c1_acc, file = "data/forecast_c1_acc.rds") # accumulated forecast for diff series
+# saveRDS(forecast_c1_acc, file = "data/forecast_c1_acc.rds") # accumulated forecast for diff series
 saveRDS(forecast_c1_t, file = "data/forecast_c1_t.rds") # diff forecast quarterly
-saveRDS(forecast_c1_acc_t, file = "data/forecast_c1_acc_t.rds") # accumulated quarterly
+# saveRDS(forecast_c1_acc_t, file = "data/forecast_c1_acc_t.rds") # accumulated quarterly
 
 # CLASS II (tbd)
 
@@ -319,7 +344,7 @@ forecast_c2_acc_t <- forecast_c2_acc %>%
     .groups = "drop"
   )
 
-# forecast_c2 <- readRDS("data/forecast_c2.rds")
+forecast_c2 <- readRDS("data/forecast_c2.rds")
 saveRDS(forecast_c2, file = "data/forecast_c2.rds")
 saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
 saveRDS(forecast_c2_t, file = "data/forecast_c2_t.rds")
