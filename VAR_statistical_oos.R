@@ -286,66 +286,79 @@ forecast_c2 <- forecast_stat_class2
 #     .groups = "drop"
 #   )
 
-NEW_forecast_c2_median <- forecast_c2 %>%
-  group_by(forecast_model, date) %>%
-  arrange(date) %>%
-  slice(1:12) %>%
-  summarise(
-    date = min(date),
-    mean = median(mean),
-    lower = median(lower),
-    upper = median(upper),
-    .groups = "drop"
-  )
+# NEW_forecast_c2_median <- forecast_c2 %>%
+#   group_by(forecast_model, date) %>%
+#   arrange(date) %>%
+#   slice(1:12) %>%
+#   summarise(
+#     date = min(date),
+#     mean = median(mean),
+#     lower = median(lower),
+#     upper = median(upper),
+#     .groups = "drop"
+#   )
 
 
-NEW_forecast_c2_t_acc <- NEW_forecast_c2_median %>%
-  arrange(forecast_model, date) %>%
-  group_by(forecast_model) %>%
-  mutate(
-    mean  = (cumprod(1 + mean  / 100) - 1) * 100,
-    lower = (cumprod(1 + lower / 100) - 1) * 100,
-    upper = (cumprod(1 + upper / 100) - 1) * 100
-  ) %>%
-  ungroup()
+# NEW_forecast_c2_t_acc <- NEW_forecast_c2_median %>%
+#   arrange(forecast_model, date) %>%
+#   group_by(forecast_model) %>%
+#   mutate(
+#     mean  = (cumprod(1 + mean  / 100) - 1) * 100,
+#     lower = (cumprod(1 + lower / 100) - 1) * 100,
+#     upper = (cumprod(1 + upper / 100) - 1) * 100
+#   ) %>%
+#   ungroup()
   
-NEW_forecast_c2_t_acc %>%
-  mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, date) %>%
-  summarise(
-    mean  = mean(mean, na.rm = TRUE),
-    lower = mean(lower, na.rm = TRUE),
-    upper = mean(upper, na.rm = TRUE),
-    .groups = "drop"
-  )
+# NEW_forecast_c2_t_acc %>%
+#   mutate(date = floor_date(date, unit = "quarter")) %>%
+#   group_by(forecast_model, date) %>%
+#   summarise(
+#     mean  = mean(mean, na.rm = TRUE),
+#     lower = mean(lower, na.rm = TRUE),
+#     upper = mean(upper, na.rm = TRUE),
+#     .groups = "drop"
+#   )
 
 
 
-prod(1 + forecast_c2$mean / 100)*100
+# prod(1 + forecast_c2$mean / 100)*100
   
   
 forecast_c2_t <- forecast_c2 %>%
-  mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, strategy, date) %>%
-  summarise(
-    mean  = mean(mean, na.rm = TRUE),
-    lower = mean(lower, na.rm = TRUE),
-    upper = mean(upper, na.rm = TRUE),
+  # 1. Convert percentages to decimals (if needed)
+  mutate(
+    mean = mean / 100,  # Only if your data is in raw % (e.g., 50% = 50, not 0.50)
+    lower = lower / 100,
+    upper = upper / 100
+  ) %>%
+  # 2. Extract year and quarter, then convert to R Date (first day of quarter)
+  mutate(
+    year = year(date),
+    quarter = quarter(date),
+    date = ymd(paste(year, 3 * quarter - 2, "01", sep = "-"))  # e.g., "2023-1-01" → "2023-01-01"
+  ) %>%
+  # 3. Group by all identifiers + quarter_date
+  group_by(forecast_model, strategy, lags, class, date) %>%
+  # 4. Calculate quarterly metrics
+  summarize(
+    mean = prod(1 + mean, na.rm = TRUE) - 1,  # Chain-linked growth
+    quarterly_lower = mean(lower, na.rm = TRUE),
+    quarterly_upper = mean(upper, na.rm = TRUE),
     .groups = "drop"
   )
 
-forecast_c2_acc_t <- forecast_c2_acc %>%
-  mutate(date = floor_date(date, unit = "quarter")) %>%
-  group_by(forecast_model, strategy, date) %>%
-  summarise(
-    mean = median(mean, na.rm = TRUE),
-    lower = median(lower, na.rm = TRUE),
-    upper = median(upper, na.rm = TRUE),
-    .groups = "drop"
-  )
+# forecast_c2_acc_t <- forecast_c2_acc %>%
+#   mutate(date = floor_date(date, unit = "quarter")) %>%
+#   group_by(forecast_model, strategy, date) %>%
+#   summarise(
+#     mean = median(mean, na.rm = TRUE),
+#     lower = median(lower, na.rm = TRUE),
+#     upper = median(upper, na.rm = TRUE),
+#     .groups = "drop"
+#   )
 
-forecast_c2 <- readRDS("data/forecast_c2.rds")
-saveRDS(forecast_c2, file = "data/forecast_c2.rds")
-saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
+# forecast_c2 <- readRDS("data/forecast_c2.rds")
+# saveRDS(forecast_c2, file = "data/forecast_c2.rds")
+# saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
 saveRDS(forecast_c2_t, file = "data/forecast_c2_t.rds")
-saveRDS(forecast_c2_acc_t, file = "data/forecast_c2_acc_t.rds")
+# saveRDS(forecast_c2_acc_t, file = "data/forecast_c2_acc_t.rds")

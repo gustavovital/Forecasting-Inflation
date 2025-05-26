@@ -6,7 +6,7 @@ library(scales)
 library(RColorBrewer)
 
 forecast_compound <- readRDS('data/forecast_compound_diff.rds')
-forecast_compound_accum <- readRDS('data/forecast_compound_acc.rds')
+# forecast_compound_accum <- readRDS('data/forecast_compound_acc.rds')
 
 # p_livre <- readRDS('data/p_livre.rds')
 # forecast_q <- readRDS('data/forecast_quarterly_oos.rds')
@@ -15,7 +15,7 @@ forecast_compound_accum <- readRDS('data/forecast_compound_acc.rds')
 
 
 # Graficos de Compound ====
-forecast_compound_accum %>% 
+forecast_compound %>% 
   mutate(line_width = ifelse(COMPOUND == "AVERAGE MODEL", 1, 0.1)) %>%
   mutate(point_width = ifelse(COMPOUND == "AVERAGE MODEL", 1, 0.2)) %>%
   ggplot(aes(x = as.Date(date), y = mean, 
