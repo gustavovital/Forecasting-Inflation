@@ -96,15 +96,17 @@ for (start in forecast_starts) {
                               COMBO = {
                                 pcs_combo <- pcs_df[, 1:n_pcs]
                                 pcs_means <- map_dfc(seq(1, n_pcs, by = 2), ~ rowMeans(pcs_combo[, c(.x, .x + 1)], na.rm = TRUE))
-                                set_names(pcs_means, paste0("PCmean_", seq_len(n_pcs / 2))) %>%
-                                  mutate(p_livre = pcs_df$p_livre)
+                                pcs_means <- set_names(pcs_means, paste0("PCmean_", seq_len(n_pcs / 2)))
+                                y_target <- pcs_df$p_livre
+                                bind_cols(pcs_means, tibble(p_livre = y_target))
                               })
+                  
                   exog <- matrix(pcs_df$D_COVID, ncol = 1)
                   colnames(exog) <- "D_COVID"
                   rownames(exog) <- NULL
                   rownames(X) <- NULL
                   
-                  model <- try(VAR(X[, -ncol(X)], p = lag, type = "const", exogen = exog), silent = TRUE)
+                  model <- try(VAR(X, p = lag, type = "const", exogen = exog), silent = TRUE)
                   if (!inherits(model, "try-error")) {
                     fc <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
                     if (!inherits(fc, "try-error")) {
@@ -166,8 +168,8 @@ COVID_forecast_c1_t <- COVID_forecast_c1 %>%
 
 # forecast_c1 <- readRDS("data/forecast_c1.rds")
 # forecast_c1_t <- readRDS("data/forecast_c1_t.rds")
-saveRDS(forecast_c1, file = "data/forecast_c1.rds") # all forecasts for differentiated series
-saveRDS(forecast_c1_t, file = "data/forecast_c1_t.rds") # diff forecast quarterly
+saveRDS(COVID_forecast_c1, file = "data/COVID_forecast_c1.rds") # all forecasts for differentiated series
+saveRDS(COVID_forecast_c1_t, file = "data/COVID_forecast_c1_t.rds") # diff forecast quarterly
 
 # CLASS II
 
@@ -182,32 +184,45 @@ for (start in forecast_starts) {
   
   for (s in strategies) {
     for (lag in lags_list) {
-      for (combo in grupo_combos) {
-        pcs_list <- lapply(combo, function(gr) get_pcs(df_train, grupos[[gr]]))
+      for (combo in seq(ncol(grupo_combos))) {
+        
+        # Extract group names
+        gr_names <- grupo_combos[, combo]
+        
+        # Get PCs for each group
+        pcs_list <- lapply(gr_names, function(gr) get_pcs(df_train, grupos[[gr]]))
         pcs_df <- suppressMessages(
           bind_cols(pcs_list) %>%
             set_names(paste0("PC", 1:ncol(.))) %>%
-            mutate(p_livre = df_train$p_livre) %>%
+            mutate(p_livre = df_train$p_livre, D_COVID = df_train$D_COVID) %>%
             drop_na()
         )
-        n_pcs <- ncol(pcs_df) - 1
+        
+        n_pcs <- ncol(pcs_df) - 2  # minus p_livre and D_COVID
+        if (n_pcs < 2) next  # skip if not enough PCs
+        
+        # Construct X depending on strategy
         X <- switch(s,
                     PC1 = pcs_df[, c(paste0("PC", seq(1, n_pcs, 2)), "p_livre")],
                     PC2 = pcs_df[, c(paste0("PC", seq(2, n_pcs, 2)), "p_livre")],
                     PC1_PC2 = pcs_df[, c(paste0("PC", 1:n_pcs), "p_livre")],
                     COMBO = {
                       pcs_combo <- pcs_df[, 1:n_pcs]
-                      pcs_means <- map_dfc(seq(1, n_pcs, by = 2), function(i) {
-                        rowMeans(pcs_combo[, c(i, i + 1)], na.rm = TRUE)
-                      }) %>%
-                        set_names(paste0("PCmean_", seq_len(n_pcs / 2))) %>%
+                      pcs_means <- map_dfc(seq(1, n_pcs, by = 2), ~ rowMeans(pcs_combo[, c(.x, .x + 1)], na.rm = TRUE))
+                      set_names(pcs_means, paste0("PCmean_", seq_len(n_pcs / 2))) %>%
                         mutate(p_livre = pcs_df$p_livre)
-                      pcs_means
                     })
         
-        model <- try(VAR(X, p = lag, type = "const"), silent = TRUE)
+        # Setup exogenous dummy
+        exog <- matrix(pcs_df$D_COVID, ncol = 1)
+        colnames(exog) <- "D_COVID"
+        rownames(X) <- NULL
+        rownames(exog) <- NULL
+        
+        # Estimate VAR model with COVID dummy
+        model <- try(VAR(X, p = lag, type = "const", exogen = exog), silent = TRUE)
         if (!inherits(model, "try-error")) {
-          fc <- try(predict(model, n.ahead = 12, ci = 0.95), silent = TRUE)
+          fc <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
           if (!inherits(fc, "try-error")) {
             fc_mat <- fc$fcst$p_livre
             df_fc <- tibble(
@@ -230,14 +245,13 @@ for (start in forecast_starts) {
     }
   }
   forecast_count <- forecast_count + 1
-}
-#####
-forecast_stat_class2 <- bind_rows(forecast_stat_class2)
-forecast_c2 <- forecast_stat_class2
+}#####
+COVID_forecast_stat_class2 <- bind_rows(forecast_stat_class2)
+COVID_forecast_c2 <- COVID_forecast_stat_class2
 
 
 
-forecast_c2_t <- forecast_c2 %>%
+COVID_forecast_c2_t <- COVID_forecast_c2 %>%
   # 1. Convert percentages to decimals (if needed)
   mutate(
     mean = mean / 100,  # Only if your data is in raw % (e.g., 50% = 50, not 0.50)
@@ -263,5 +277,5 @@ forecast_c2_t <- forecast_c2 %>%
 # forecast_c2 <- readRDS("data/forecast_c2.rds")
 # saveRDS(forecast_c2, file = "data/forecast_c2.rds")
 # saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
-saveRDS(forecast_c2_t, file = "data/forecast_c2_t.rds")
+saveRDS(COVID_forecast_c2_t, file = "data/COVID_forecast_c2_t.rds")
 # saveRDS(forecast_c2_acc_t, file = "data/forecast_c2_acc_t.rds")
