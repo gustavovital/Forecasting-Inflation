@@ -9,23 +9,23 @@ data_quarter_l <- readRDS("data/data_quarter_l.rds") %>% filter(date >= as.Date(
 # Apply to all relevant datasets
 COVID_data_statistic <- data_statistic %>%
   mutate(D_COVID = ifelse(date >= as.Date("2020-03-01") & 
-                            date <= as.Date("2020-06-30"), 1, 0))
+                            date <= as.Date("2020-12-30"), 1, 0))
 
 COVID_data_montly_d <- data_montly_d %>%
   mutate(D_COVID = ifelse(date >= as.Date("2020-03-01") & 
-                            date <= as.Date("2020-06-30"), 1, 0))
+                            date <= as.Date("2020-12-30"), 1, 0))
 
 COVID_data_montly_l <- data_montly_l %>%
   mutate(D_COVID = ifelse(date >= as.Date("2020-03-01") & 
-                            date <= as.Date("2020-06-30"), 1, 0))
+                            date <= as.Date("2020-12-30"), 1, 0))
 
 COVID_data_quarter_d <- data_quarter_d %>%
   mutate(D_COVID = ifelse(date >= as.Date("2020-01-01") & 
-                            date <= as.Date("2020-06-30"), 1, 0))
+                            date <= as.Date("2020-12-30"), 1, 0))
 
 COVID_data_quarter_l <- data_quarter_l %>%
   mutate(D_COVID = ifelse(date >= as.Date("2020-01-01") & 
-                            date <= as.Date("2020-06-30"), 1, 0))
+                            date <= as.Date("2020-12-30"), 1, 0))
 
 saveRDS(COVID_data_statistic, 'data/COVID_data_statistic.rds')
 saveRDS(COVID_data_montly_d, 'data/COVID_data_montly_d.rds')

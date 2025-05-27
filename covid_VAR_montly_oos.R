@@ -131,8 +131,8 @@ for (i in seq_along(forecast_starts)) {
       rownames(X_exog) <- rownames(Y)               # enforce rowname match
       
       # Check dimensions (optional sanity)
-      print(dim(Y))
-      print(dim(X_exog))
+      # print(dim(Y))
+      # print(dim(X_exog))
       stopifnot(identical(rownames(Y), rownames(X_exog)))
       
       # colnames(X_exog) <- "D_COVID"
