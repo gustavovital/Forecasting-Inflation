@@ -1,4 +1,4 @@
-rm(list = ls())
+rm(list = ls()) 
 
 library(tidyverse)
 library(tsibble)
@@ -159,14 +159,14 @@ COVID_forecast_c1_t <- COVID_forecast_c1 %>%
   # 4. Calculate quarterly metrics
   summarize(
     quarterly_mean = prod(1 + mean, na.rm = TRUE) - 1,  # Chain-linked growth
-    quarterly_lower = mean(lower, na.rm = TRUE),
-    quarterly_upper = mean(upper, na.rm = TRUE),
+    quarterly_lower = prod(1 + lower, na.rm = TRUE) - 1,
+    quarterly_upper = prod(1 + upper, na.rm = TRUE) - 1,
     .groups = "drop"
   )
 
 
 
-# forecast_c1 <- readRDS("data/forecast_c1.rds")
+# COVID_forecast_c1 <- readRDS("data/COVID_forecast_c1.rds")
 # forecast_c1_t <- readRDS("data/forecast_c1_t.rds")
 saveRDS(COVID_forecast_c1, file = "data/COVID_forecast_c1.rds") # all forecasts for differentiated series
 saveRDS(COVID_forecast_c1_t, file = "data/COVID_forecast_c1_t.rds") # diff forecast quarterly
@@ -184,24 +184,17 @@ for (start in forecast_starts) {
   
   for (s in strategies) {
     for (lag in lags_list) {
-      for (combo in seq(ncol(grupo_combos))) {
-        
-        # Extract group names
-        gr_names <- grupo_combos[, combo]
-        
-        # Get PCs for each group
-        pcs_list <- lapply(gr_names, function(gr) get_pcs(df_train, grupos[[gr]]))
+      for (combo in grupo_combos) { 
+        pcs_list <- lapply(combo, function(gr) get_pcs(df_train, grupos[[gr]]))
         pcs_df <- suppressMessages(
           bind_cols(pcs_list) %>%
             set_names(paste0("PC", 1:ncol(.))) %>%
             mutate(p_livre = df_train$p_livre, D_COVID = df_train$D_COVID) %>%
             drop_na()
         )
+        n_pcs <- ncol(pcs_df) - 2
+        if (n_pcs < 2) next
         
-        n_pcs <- ncol(pcs_df) - 2  # minus p_livre and D_COVID
-        if (n_pcs < 2) next  # skip if not enough PCs
-        
-        # Construct X depending on strategy
         X <- switch(s,
                     PC1 = pcs_df[, c(paste0("PC", seq(1, n_pcs, 2)), "p_livre")],
                     PC2 = pcs_df[, c(paste0("PC", seq(2, n_pcs, 2)), "p_livre")],
@@ -213,13 +206,11 @@ for (start in forecast_starts) {
                         mutate(p_livre = pcs_df$p_livre)
                     })
         
-        # Setup exogenous dummy
         exog <- matrix(pcs_df$D_COVID, ncol = 1)
         colnames(exog) <- "D_COVID"
         rownames(X) <- NULL
         rownames(exog) <- NULL
         
-        # Estimate VAR model with COVID dummy
         model <- try(VAR(X, p = lag, type = "const", exogen = exog), silent = TRUE)
         if (!inherits(model, "try-error")) {
           fc <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
@@ -245,11 +236,9 @@ for (start in forecast_starts) {
     }
   }
   forecast_count <- forecast_count + 1
-}#####
+}
 COVID_forecast_stat_class2 <- bind_rows(forecast_stat_class2)
 COVID_forecast_c2 <- COVID_forecast_stat_class2
-
-
 
 COVID_forecast_c2_t <- COVID_forecast_c2 %>%
   # 1. Convert percentages to decimals (if needed)
@@ -268,14 +257,14 @@ COVID_forecast_c2_t <- COVID_forecast_c2 %>%
   group_by(forecast_model, strategy, lags, class, date) %>%
   # 4. Calculate quarterly metrics
   summarize(
-    mean = prod(1 + mean, na.rm = TRUE) - 1,  # Chain-linked growth
-    quarterly_lower = mean(lower, na.rm = TRUE),
-    quarterly_upper = mean(upper, na.rm = TRUE),
+    mean = prod(1 + mean, na.rm = TRUE) - 1,  
+    quarterly_lower = prod(1 + lower, na.rm = TRUE) - 1,
+    quarterly_upper = prod(1 + upper, na.rm = TRUE) - 1,
     .groups = "drop"
   )
 
-# forecast_c2 <- readRDS("data/forecast_c2.rds")
-# saveRDS(forecast_c2, file = "data/forecast_c2.rds")
+# COVID_forecast_c2_t <- readRDS("data/COVID_forecast_c2_t.rds")
+# saveRDS(COVID_forecast_c2, file = "data/COVID_forecast_c2.rds")
 # saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
 saveRDS(COVID_forecast_c2_t, file = "data/COVID_forecast_c2_t.rds")
 # saveRDS(forecast_c2_acc_t, file = "data/forecast_c2_acc_t.rds")
