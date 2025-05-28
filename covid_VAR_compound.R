@@ -86,72 +86,11 @@ COVID_compound_c2_t <- COVID_forecast_c2_t %>%
   )
 
 
-# ACCUMULATED DATA WRANGLING ====
-# MONTLY ====
-# compound_m_t_VAR_acc <- forecast_m_acc_t %>%
-#   filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
-#   group_by(forecast_model, date) %>%
-#   summarise(
-#     mean  = median(mean, na.rm = TRUE),
-#     lower = median(lower, na.rm = TRUE),
-#     upper = median(upper, na.rm = TRUE),
-#     .groups = "drop"
-#   )
-
-# compound_m_t_BVAR_acc <- forecast_m_acc_t %>%
-#   filter(model %in% c('BVAR_I', 'BVAR_II', 'BVAR_III')) %>% 
-#   group_by(forecast_model, date) %>%
-#   summarise(
-#     mean  = median(mean, na.rm = TRUE),
-#     lower = median(lower, na.rm = TRUE),
-#     upper = median(upper, na.rm = TRUE),
-#     .groups = "drop"
-#   )
-
-# QUARTERLY DATA ====
-# compound_t_VAR_acc <- forecast_t_acc %>%
-#   filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
-#   group_by(forecast_model, date) %>%
-#   summarise(
-#     mean  = median(mean_acc, na.rm = TRUE),
-#     lower = median(lower_acc, na.rm = TRUE),
-#     upper = median(upper_acc, na.rm = TRUE),
-#     .groups = "drop"
-#   )
-
-# compound_t_BVAR_acc <- forecast_t_acc %>%
-#   filter(!model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
-#   group_by(forecast_model, date) %>%
-#   summarise(
-#     mean  = median(mean_acc, na.rm = TRUE),
-#     lower = median(lower_acc, na.rm = TRUE),
-#     upper = median(upper_acc, na.rm = TRUE),
-#     .groups = "drop"
-#   )
-
-# STATISTICAL DATA ====
-# compound_c1_t_acc <- forecast_c1_acc_t %>%
-#   group_by(forecast_model, date) %>%
-#   summarise(
-#     mean  = median(mean, na.rm = TRUE),
-#     lower = median(lower, na.rm = TRUE),
-#     upper = median(upper, na.rm = TRUE),
-#     .groups = "drop"
-#   )
-
-# compound_c2_t_acc <- forecast_c2_acc_t %>%
-#   group_by(forecast_model, date) %>%
-#   summarise(
-#     mean  = median(mean, na.rm = TRUE),
-#     lower = median(lower, na.rm = TRUE),
-#     upper = median(upper, na.rm = TRUE),
-#     .groups = "drop"
-#   )
 
 # Create compound VAR ====
 COVID_compound_c1_t$COMPOUND <- "CLASS I"
 COVID_compound_c2_t$COMPOUND <- "CLASS II"
-COVID_compound_m_t_VAR$COMPOUND <- "VAR VECM - M"
+COVID_compound_m_t_VAR$COMPOUND <- "VAR/VECM - M"
 COVID_compound_m_t_BVAR$COMPOUND <- "BVAR - M"
 COVID_compound_t_VAR$COMPOUND <- "VAR/VECM - Q"
 COVID_compound_t_BVAR$COMPOUND <- "BVAR - Q"
