@@ -3,7 +3,7 @@
 
 p_livre <- g_series(11428, 'p_livre') 
 
-forecast_compound <- readRDS('data/forecast_compound_diff.rds')
+# forecast_compound <- readRDS('data/forecast_compound_diff.rds')
 COVID_forecast_compound <- readRDS('data/COVID_forecast_compound_diff.rds')
 
 p_livre_t <- get_series(11428, start_date = "2023-01-01") %>%
@@ -22,13 +22,15 @@ p_livre_t <- p_livre_t %>%
   mutate(forecast_model = 'Free Prices',
          date = quarter,
          mean = p_livre,
-         lower = NA,
-         upper = NA,
+         lower_95 = NA,
+         upper_95 = NA,
+         lower_80 = NA,
+         upper_80 = NA,
          COMPOUND = 'Free Prices') %>% 
-  dplyr::select(forecast_model, date, mean, lower, upper, COMPOUND)
+  dplyr::select(forecast_model, date, mean, lower_95, upper_95, lower_80, upper_80, COMPOUND)
 
-forecast_compound_ipca <- bind_rows(forecast_compound, p_livre_t)
+# forecast_compound_ipca <- bind_rows(forecast_compound, p_livre_t)
 COVID_forecast_compound_ipca <- bind_rows(COVID_forecast_compound, p_livre_t)
 
-saveRDS(forecast_compound_ipca, 'data/forecast_compound_ipca.rds')
+# saveRDS(forecast_compound_ipca, 'data/forecast_compound_ipca.rds')
 saveRDS(COVID_forecast_compound_ipca, 'data/COVID_forecast_compound_ipca.rds')
