@@ -63,15 +63,22 @@ for (i in seq_along(forecast_starts)) {
       exog_fcst <- matrix(0, nrow = 12, ncol = 1)
       colnames(exog_fcst) <- "D_COVID"
       forecast_var <- predict(var_model, n.ahead = 12, ci = 0.95, dumvar = exog_fcst)
+      
+      forecast_95 <- predict(var_model, n.ahead = 12, ci = 0.95, dumvar = exog_fcst)
+      forecast_80 <- predict(var_model, n.ahead = 12, ci = 0.80, dumvar = exog_fcst)
+      
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
         model     = model_name,
         component = "p_livre",
         date      = seq(forecast_starts[i], by = "month", length.out = 12),
-        mean      = forecast_var$fcst[['p_livre']][, "fcst"],
-        lower     = forecast_var$fcst[['p_livre']][, "lower"],
-        upper     = forecast_var$fcst[['p_livre']][, "upper"]
+        mean      = forecast_95$fcst[['p_livre']][, "fcst"],
+        lower_95  = forecast_95$fcst[['p_livre']][, "lower"],
+        upper_95  = forecast_95$fcst[['p_livre']][, "upper"],
+        lower_80  = forecast_80$fcst[['p_livre']][, "lower"],
+        upper_80  = forecast_80$fcst[['p_livre']][, "upper"]
       )
+      
       forecast_df <- bind_rows(forecast_df, fc_tmp)
       
     } else if (model_name %in% c("BVAR_I", "BVAR_II", "BVAR_III")) {
@@ -106,15 +113,20 @@ for (i in seq_along(forecast_starts)) {
       )
       
       j <- which(colnames(Y) == "p_livre")
+      
+      # Extract proper quantiles - using columns 1-3 of plot_vals
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
         model     = model_name,
         component = "p_livre",
         date      = seq(forecast_starts[i], by = "month", length.out = 12),
-        mean      = fcst$plot_vals[1:12, 2, j],
-        lower     = fcst$plot_vals[1:12, 1, j],
-        upper     = fcst$plot_vals[1:12, 3, j]
+        mean      = fcst$forecast_mean[1:12, j],
+        lower_95  = fcst$plot_vals[1:12, 1, j],  # Column 1 = lower quantile
+        upper_95  = fcst$plot_vals[1:12, 3, j],  # Column 3 = upper quantile
+        lower_80  = fcst$plot_vals[1:12, 1, j] + 0.2*(fcst$plot_vals[1:12, 3, j] - fcst$plot_vals[1:12, 1, j]),
+        upper_80  = fcst$plot_vals[1:12, 3, j] - 0.2*(fcst$plot_vals[1:12, 3, j] - fcst$plot_vals[1:12, 1, j])
       )
+              
       forecast_df <- bind_rows(forecast_df, fc_tmp)
       
     } else if (model_name == "VECM") {
@@ -148,17 +160,21 @@ for (i in seq_along(forecast_starts)) {
       
       forecast_vec <- predict(vec2var_model, n.ahead = 12, ci = 0.95, dumvar = X_future)
       
+      forecast_95 <- predict(vec2var_model, n.ahead = 12, ci = 0.95, dumvar = X_future)
+      forecast_80 <- predict(vec2var_model, n.ahead = 12, ci = 0.80, dumvar = X_future)
+      
       last_obs <- tail(train_l$p_livre, 1)
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
         model     = model_name,
         component = "p_livre",
         date      = seq(forecast_starts[i], by = "month", length.out = 12),
-        mean      = diff(c(last_obs, forecast_vec$fcst[['p_livre']][, "fcst"])),
-        lower     = diff(c(last_obs, forecast_vec$fcst[['p_livre']][, "lower"])),
-        upper     = diff(c(last_obs, forecast_vec$fcst[['p_livre']][, "upper"]))
+        mean      = diff(c(last_obs, forecast_95$fcst[['p_livre']][, "fcst"])),
+        lower_95  = diff(c(last_obs, forecast_95$fcst[['p_livre']][, "lower"])),
+        upper_95  = diff(c(last_obs, forecast_95$fcst[['p_livre']][, "upper"])),
+        lower_80  = diff(c(last_obs, forecast_80$fcst[['p_livre']][, "lower"])),
+        upper_80  = diff(c(last_obs, forecast_80$fcst[['p_livre']][, "upper"]))
       )
-      forecast_df <- bind_rows(forecast_df, fc_tmp)
     }
   }
 }
@@ -170,8 +186,20 @@ COVID_forecast_m_t <- COVID_forecast_m %>%
   group_by(forecast_model, model, date) %>%
   summarise(
     mean = (prod(1 + mean / 100) - 1) * 100,
-    lower = (prod(1 + lower / 100) - 1) * 100,
-    upper = (prod(1 + upper / 100) - 1) * 100,
+    lower = (prod(1 + lower_95 / 100) - 1) * 100,
+    upper = (prod(1 + upper_95 / 100) - 1) * 100,
+    .groups = "drop"
+  )
+
+COVID_forecast_m_t <- COVID_forecast_m %>% 
+  mutate(date = floor_date(date, unit = "quarter")) %>%
+  group_by(forecast_model, model, date) %>%
+  summarise(
+    mean = (prod(1 + mean / 100) - 1) * 100,
+    lower_95 = (prod(1 + lower_95 / 100) - 1) * 100,
+    upper_95 = (prod(1 + upper_95 / 100) - 1) * 100,
+    lower_80 = (prod(1 + lower_80 / 100) - 1) * 100,
+    upper_80 = (prod(1 + upper_80 / 100) - 1) * 100,
     .groups = "drop"
   )
 

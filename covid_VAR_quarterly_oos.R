@@ -58,16 +58,21 @@ for (i in seq_along(forecast_starts)) {
       
       exog_fcst <- matrix(0, nrow = 4, ncol = 1)
       colnames(exog_fcst) <- "D_COVID"
-      forecast_var <- predict(var_model, n.ahead = 4, ci = 0.95, dumvar = exog_fcst)
+      
+      # Get both 95% and 80% confidence intervals
+      forecast_95 <- predict(var_model, n.ahead = 4, ci = 0.95, dumvar = exog_fcst)
+      forecast_80 <- predict(var_model, n.ahead = 4, ci = 0.80, dumvar = exog_fcst)
       
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
         model     = model_name,
         component = 'p_livre',
         date      = seq(forecast_starts[i], by = "quarter", length.out = 4),
-        mean      = forecast_var$fcst[['p_livre']][, "fcst"],
-        lower     = forecast_var$fcst[['p_livre']][, "lower"],
-        upper     = forecast_var$fcst[['p_livre']][, "upper"]
+        mean      = forecast_95$fcst[['p_livre']][, "fcst"],
+        lower_95  = forecast_95$fcst[['p_livre']][, "lower"],
+        upper_95  = forecast_95$fcst[['p_livre']][, "upper"],
+        lower_80  = forecast_80$fcst[['p_livre']][, "lower"],
+        upper_80  = forecast_80$fcst[['p_livre']][, "upper"]
       )
       forecast_df <- bind_rows(forecast_df, fc_tmp)
       
@@ -101,17 +106,20 @@ for (i in seq_along(forecast_starts)) {
       )
       
       j <- which(colnames(Y) == "p_livre")
+      
+      # Calculate 80% intervals as done in monthly script
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
         model     = model_name,
         component = "p_livre",
         date      = seq(forecast_starts[i], by = "quarter", length.out = 4),
-        mean      = fcst$plot_vals[1:4, 2, j],
-        lower     = fcst$plot_vals[1:4, 1, j],
-        upper     = fcst$plot_vals[1:4, 3, j]
+        mean      = fcst$forecast_mean[1:4, j],
+        lower_95  = fcst$plot_vals[1:4, 1, j],  # Column 1 = lower quantile
+        upper_95  = fcst$plot_vals[1:4, 3, j],  # Column 3 = upper quantile
+        lower_80  = fcst$plot_vals[1:4, 1, j] + 0.2*(fcst$plot_vals[1:4, 3, j] - fcst$plot_vals[1:4, 1, j]),
+        upper_80  = fcst$plot_vals[1:4, 3, j] - 0.2*(fcst$plot_vals[1:4, 3, j] - fcst$plot_vals[1:4, 1, j])
       )
       forecast_df <- bind_rows(forecast_df, fc_tmp)
-      
       
     } else if (model_name == "VECM") {
       data_var <- train_l[c("date", var_model_vars[[vars]], "D_COVID")] %>% column_to_rownames("date")
@@ -121,16 +129,21 @@ for (i in seq_along(forecast_starts)) {
       jotest <- ca.jo(Y, type = "trace", ecdet = "const", K = 2)
       vec2var_model <- vec2var(jotest, r = 2)
       
-      forecast_vec <- predict(vec2var_model, n.ahead = 4, ci = 0.95, dumvar = matrix(0, nrow = 4, ncol = 1, dimnames = list(NULL, "D_COVID")))
+      # Get both 95% and 80% confidence intervals
+      forecast_95 <- predict(vec2var_model, n.ahead = 4, ci = 0.95, dumvar = matrix(0, nrow = 4, ncol = 1, dimnames = list(NULL, "D_COVID")))
+      forecast_80 <- predict(vec2var_model, n.ahead = 4, ci = 0.80, dumvar = matrix(0, nrow = 4, ncol = 1, dimnames = list(NULL, "D_COVID")))
+      
       last_obs <- tail(train_l$p_livre, 1)
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
         model     = model_name,
         component = "p_livre",
         date      = seq(forecast_starts[i], by = "quarter", length.out = 4),
-        mean      = diff(c(last_obs, forecast_vec$fcst[['p_livre']][, "fcst"])),
-        lower     = diff(c(last_obs, forecast_vec$fcst[['p_livre']][, "lower"])),
-        upper     = diff(c(last_obs, forecast_vec$fcst[['p_livre']][, "upper"]))
+        mean      = diff(c(last_obs, forecast_95$fcst[['p_livre']][, "fcst"])),
+        lower_95  = diff(c(last_obs, forecast_95$fcst[['p_livre']][, "lower"])),
+        upper_95  = diff(c(last_obs, forecast_95$fcst[['p_livre']][, "upper"])),
+        lower_80  = diff(c(last_obs, forecast_80$fcst[['p_livre']][, "lower"])),
+        upper_80  = diff(c(last_obs, forecast_80$fcst[['p_livre']][, "upper"]))
       )
       forecast_df <- bind_rows(forecast_df, fc_tmp)
     }
@@ -138,18 +151,5 @@ for (i in seq_along(forecast_starts)) {
 }
 
 COVID_forecast_df <- forecast_df
-# forecast_t_acc <- forecast_df %>%
-#   group_by(forecast_model, model, date) %>%
-#   arrange(date) %>%
-#   slice(1:4) %>%  # 4 quarters ahead
-#   summarise(
-#     date = min(date),  # origin of forecast
-#     mean_acc  = (prod(1 + mean  / 100) - 1) * 100,
-#     lower_acc = (prod(1 + lower / 100) - 1) * 100,
-#     upper_acc = (prod(1 + upper / 100) - 1) * 100,
-#     .groups = "drop"
-#   ) 
 
-# forecast_df <- readRDS("data/forecast_t.rds")
 saveRDS(COVID_forecast_df, file = "data/COVID_forecast_df.rds")
-# saveRDS(forecast_t_acc, file = "data/forecast_t_acc.rds")

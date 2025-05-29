@@ -7,19 +7,19 @@ library(vars)
 library(glue)
 library(lubridate)
 
-# Carregar dados
+# Load data
 COVID_data_statistic <- readRDS("data/COVID_data_statistic.rds")
 COVID_data_statistic <- COVID_data_statistic %>% filter(date >= as.Date("2012-01-01"))
 
 # Rolling forecast windows
 forecast_starts <- seq(as.Date("2023-01-01"), as.Date("2025-01-01"), by = "quarter")
-h <- 12  # horizonte de previsão
+h <- 12  # forecast horizon
 
-# Estratégias e defasagens
+# Strategies and lags
 strategies <- c("PC1", "PC2", "PC1_PC2", "COMBO")
 lags_list <- 1:6
 
-# Subgrupos (classe I)
+# Subgroups (class I)
 subgrupos <- list(
   atividade = list(energia = c("e1", "e2", "e3"), producao = c("comercio", "uci", "u")),
   externo = list(precos_ext = c("ppi", "epi", "ipi"), quantum = c("quantum_x", "quantum_m")),
@@ -29,7 +29,7 @@ subgrupos <- list(
   choques = list(energia = c("crb", "gas", "oil"), combust = c("petrol", "ipa_ipc"))
 )
 
-# Grupos (classe II)
+# Groups (class II)
 grupos <- list(
   atividade = c("comercio", "e1", "e2", "e3", "uci", "u"),
   externo = c("vix", "ppi", "epi", "ipi", "quantum_x", "quantum_m"),
@@ -39,7 +39,7 @@ grupos <- list(
   choques = c("crb", "gas", "ipa_ipc", "oil", "petrol")
 )
 
-# Função para extrair PCs
+# Function to extract PCs
 get_pcs <- function(df, vars) {
   X <- df[, vars] %>% na.omit()
   if (nrow(X) == 0) return(matrix(NA, nrow = nrow(df), ncol = 2))
@@ -108,18 +108,25 @@ for (start in forecast_starts) {
                   
                   model <- try(VAR(X, p = lag, type = "const", exogen = exog), silent = TRUE)
                   if (!inherits(model, "try-error")) {
-                    fc <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
-                    if (!inherits(fc, "try-error")) {
-                      fc_mat <- fc$fcst$p_livre
+                    # Get both 95% and 80% confidence intervals
+                    fc_95 <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
+                    fc_80 <- try(predict(model, n.ahead = h, ci = 0.80, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
+                    
+                    if (!inherits(fc_95, "try-error") && !inherits(fc_80, "try-error")) {
+                      fc_mat_95 <- fc_95$fcst$p_livre
+                      fc_mat_80 <- fc_80$fcst$p_livre
+                      
                       df_fc <- tibble(
                         forecast_model = forecast_model_id,
                         model_id = model_id,
                         strategy = s,
                         lags = lag,
                         date = seq(as.Date(start), by = "month", length.out = h),
-                        mean = fc_mat[, 1],
-                        lower = fc_mat[, 2],
-                        upper = fc_mat[, 3],
+                        mean = fc_mat_95[, 1],
+                        lower_95 = fc_mat_95[, 2],
+                        upper_95 = fc_mat_95[, 3],
+                        lower_80 = fc_mat_80[, 2],
+                        upper_80 = fc_mat_80[, 3],
                         class = "CLASS I"
                       )
                       forecast_stat_class1[[length(forecast_stat_class1) + 1]] <- df_fc
@@ -141,38 +148,34 @@ for (start in forecast_starts) {
 COVID_forecast_stat_class1 <- bind_rows(forecast_stat_class1)
 COVID_forecast_c1 <- COVID_forecast_stat_class1
 
+# Quarterly transformation with both CIs
 COVID_forecast_c1_t <- COVID_forecast_c1 %>%
-  # 1. Convert percentages to decimals (if needed)
   mutate(
-    mean = mean / 100,  # Only if your data is in raw % (e.g., 50% = 50, not 0.50)
-    lower = lower / 100,
-    upper = upper / 100
+    mean = mean / 100,
+    lower_95 = lower_95 / 100,
+    upper_95 = upper_95 / 100,
+    lower_80 = lower_80 / 100,
+    upper_80 = upper_80 / 100
   ) %>%
-  # 2. Extract year and quarter, then convert to R Date (first day of quarter)
   mutate(
     year = year(date),
     quarter = quarter(date),
-    date = ymd(paste(year, 3 * quarter - 2, "01", sep = "-"))  # e.g., "2023-1-01" → "2023-01-01"
+    date = ymd(paste(year, 3 * quarter - 2, "01", sep = "-"))
   ) %>%
-  # 3. Group by all identifiers + quarter_date
   group_by(forecast_model, strategy, lags, class, date) %>%
-  # 4. Calculate quarterly metrics
   summarize(
-    quarterly_mean = prod(1 + mean, na.rm = TRUE) - 1,  # Chain-linked growth
-    quarterly_lower = prod(1 + lower, na.rm = TRUE) - 1,
-    quarterly_upper = prod(1 + upper, na.rm = TRUE) - 1,
+    quarterly_mean = prod(1 + mean, na.rm = TRUE) - 1,
+    quarterly_lower_95 = prod(1 + lower_95, na.rm = TRUE) - 1,
+    quarterly_upper_95 = prod(1 + upper_95, na.rm = TRUE) - 1,
+    quarterly_lower_80 = prod(1 + lower_80, na.rm = TRUE) - 1,
+    quarterly_upper_80 = prod(1 + upper_80, na.rm = TRUE) - 1,
     .groups = "drop"
   )
 
-
-
-# COVID_forecast_c1 <- readRDS("data/COVID_forecast_c1.rds")
-# forecast_c1_t <- readRDS("data/forecast_c1_t.rds")
-saveRDS(COVID_forecast_c1, file = "data/COVID_forecast_c1.rds") # all forecasts for differentiated series
-saveRDS(COVID_forecast_c1_t, file = "data/COVID_forecast_c1_t.rds") # diff forecast quarterly
+saveRDS(COVID_forecast_c1, file = "data/COVID_forecast_c1.rds")
+saveRDS(COVID_forecast_c1_t, file = "data/COVID_forecast_c1_t.rds")
 
 # CLASS II
-
 grupo_combos <- combn(names(grupos), 3)
 
 forecast_count <- 1
@@ -213,18 +216,25 @@ for (start in forecast_starts) {
         
         model <- try(VAR(X, p = lag, type = "const", exogen = exog), silent = TRUE)
         if (!inherits(model, "try-error")) {
-          fc <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
-          if (!inherits(fc, "try-error")) {
-            fc_mat <- fc$fcst$p_livre
+          # Get both 95% and 80% confidence intervals
+          fc_95 <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
+          fc_80 <- try(predict(model, n.ahead = h, ci = 0.80, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
+          
+          if (!inherits(fc_95, "try-error") && !inherits(fc_80, "try-error")) {
+            fc_mat_95 <- fc_95$fcst$p_livre
+            fc_mat_80 <- fc_80$fcst$p_livre
+            
             df_fc <- tibble(
               forecast_model = forecast_model_id,
               model_id = model_id,
               strategy = s,
               lags = lag,
               date = seq(as.Date(start), by = "month", length.out = h),
-              mean = fc_mat[, 1],
-              lower = fc_mat[, 2],
-              upper = fc_mat[, 3],
+              mean = fc_mat_95[, 1],
+              lower_95 = fc_mat_95[, 2],
+              upper_95 = fc_mat_95[, 3],
+              lower_80 = fc_mat_80[, 2],
+              upper_80 = fc_mat_80[, 3],
               class = "CLASS II"
             )
             forecast_stat_class2[[length(forecast_stat_class2) + 1]] <- df_fc
@@ -237,34 +247,33 @@ for (start in forecast_starts) {
   }
   forecast_count <- forecast_count + 1
 }
+
 COVID_forecast_stat_class2 <- bind_rows(forecast_stat_class2)
 COVID_forecast_c2 <- COVID_forecast_stat_class2
 
+# Quarterly transformation with both CIs
 COVID_forecast_c2_t <- COVID_forecast_c2 %>%
-  # 1. Convert percentages to decimals (if needed)
   mutate(
-    mean = mean / 100,  # Only if your data is in raw % (e.g., 50% = 50, not 0.50)
-    lower = lower / 100,
-    upper = upper / 100
+    mean = mean / 100,
+    lower_95 = lower_95 / 100,
+    upper_95 = upper_95 / 100,
+    lower_80 = lower_80 / 100,
+    upper_80 = upper_80 / 100
   ) %>%
-  # 2. Extract year and quarter, then convert to R Date (first day of quarter)
   mutate(
     year = year(date),
     quarter = quarter(date),
-    date = ymd(paste(year, 3 * quarter - 2, "01", sep = "-"))  # e.g., "2023-1-01" → "2023-01-01"
+    date = ymd(paste(year, 3 * quarter - 2, "01", sep = "-"))
   ) %>%
-  # 3. Group by all identifiers + quarter_date
   group_by(forecast_model, strategy, lags, class, date) %>%
-  # 4. Calculate quarterly metrics
   summarize(
-    mean = prod(1 + mean, na.rm = TRUE) - 1,  
-    quarterly_lower = prod(1 + lower, na.rm = TRUE) - 1,
-    quarterly_upper = prod(1 + upper, na.rm = TRUE) - 1,
+    quarterly_mean = prod(1 + mean, na.rm = TRUE) - 1,
+    quarterly_lower_95 = prod(1 + lower_95, na.rm = TRUE) - 1,
+    quarterly_upper_95 = prod(1 + upper_95, na.rm = TRUE) - 1,
+    quarterly_lower_80 = prod(1 + lower_80, na.rm = TRUE) - 1,
+    quarterly_upper_80 = prod(1 + upper_80, na.rm = TRUE) - 1,
     .groups = "drop"
   )
 
-# COVID_forecast_c2_t <- readRDS("data/COVID_forecast_c2_t.rds")
-# saveRDS(COVID_forecast_c2, file = "data/COVID_forecast_c2.rds")
-# saveRDS(forecast_c2_acc, file = "data/forecast_c2_acc.rds")
+saveRDS(COVID_forecast_c2, file = "data/COVID_forecast_c2.rds")
 saveRDS(COVID_forecast_c2_t, file = "data/COVID_forecast_c2_t.rds")
-# saveRDS(forecast_c2_acc_t, file = "data/forecast_c2_acc_t.rds")
