@@ -68,3 +68,74 @@ get_pcs <- function(df, vars, n = 2) {
   pcs$x[, 1:n] %>%
     as_tibble()
 }
+
+unit_root_table <- function(series, lags_adf = NULL, lags_kpss = NULL) {
+  
+  # Unit test impletentation in order to generalise unit root tests for 
+  # time series. Course of econometrics II - FEP - UP
+  # Authour: gustavovital
+  # Date: 04/04/2025
+  
+  require(urca)
+  
+  series <- as.numeric(series)
+  n <- length(series)
+  if (is.null(lags_adf)) lags_adf <- trunc((n - 1)^(1/3))
+  if (is.null(lags_kpss)) lags_kpss <- trunc((n - 1)^(1/4))
+  
+  results <- data.frame()
+  
+  # ADF Test (only tau)
+  tau_names <- c(none = "tau1", drift = "tau2", trend = "tau3")
+  
+  for (type in c("none", "drift", "trend")) {
+    test <- ur.df(series, type = type, lags = lags_adf)
+    stat_name <- tau_names[[type]]
+    
+    stat <- test@teststat[, stat_name] 
+    crit <- test@cval[stat_name, ]
+    
+    row <- data.frame(
+      Test = "ADF",
+      Model = type,
+      Statistic = round(unname(stat), 3),
+      CV_1pct = round(crit["1pct"], 3),
+      CV_5pct = round(crit["5pct"], 3),
+      CV_10pct = round(crit["10pct"], 3)
+    )
+    
+    results <- rbind(results, row)
+  }
+  
+  # PP Test (Only Z-tau)
+  for (model in c("constant", "trend")) {
+    test <- ur.pp(series, type = "Z-tau", model = model, lags = "long")
+    row <- data.frame(
+      Test = "PP",
+      Model = model,
+      Statistic = round(test@teststat[[1]], 3),
+      CV_1pct = round(test@cval[1, "1pct"], 3),
+      CV_5pct = round(test@cval[1, "5pct"], 3),
+      CV_10pct = round(test@cval[1, "10pct"], 3)
+    )
+    results <- rbind(results, row)
+  }
+  
+  # KPSS Test
+  for (type in c("mu", "tau")) {
+    test <- ur.kpss(series, type = type, use.lag = lags_kpss)
+    crit_vals <- test@cval
+    row <- data.frame(
+      Test = "KPSS",
+      Model = type,
+      Statistic = round(test@teststat, 3),
+      CV_1pct = round(unname(crit_vals[,"1pct"]), 3),
+      CV_5pct = round(unname(crit_vals[,"5pct"]), 3),
+      CV_10pct = round(unname(crit_vals[,"10pct"]), 3)
+    )
+    results <- rbind(results, row)
+  }
+  
+  row.names(results) <- NULL
+  return(results)
+}
