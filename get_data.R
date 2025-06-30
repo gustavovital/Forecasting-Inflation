@@ -1,4 +1,4 @@
-#
+# GET DATA ====
 data_montly_d <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "month"))
 data_montly_l <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "month"))
 
@@ -105,8 +105,8 @@ m1 <- g_series(27841, 'm1')
 data_montly_d$m1 <- diff(m1$m1)
 
 
-# saveRDS(data_montly_l, file = "data/data_montly_l.rds")
-# saveRDS(data_montly_d, file = "data/data_montly_d.rds")
+saveRDS(data_montly_l, file = "data/data_montly_l.rds")
+saveRDS(data_montly_d, file = "data/data_montly_d.rds")
 #...............................................................................
 # COMPONENTES TRIMESTRAIS ====
 #...............................................................................
@@ -207,8 +207,8 @@ risco <- full_join(selic, us3m, by = "date") %>%
 risco_T <- to_quarterly(risco, valor)
 data_quarter_d$embi <- risco_T$valor
 
-# saveRDS(data_quarter_l, file = "data/data_quarter_l.rds")
-# saveRDS(data_quarter_d, file = "data/data_quarter_d.rds")
+saveRDS(data_quarter_l, file = "data/data_quarter_l.rds")
+saveRDS(data_quarter_d, file = "data/data_quarter_d.rds")
 #...............................................................................
 # COMPONENTES ESTATISTICOS ====
 #...............................................................................
