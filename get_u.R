@@ -1,4 +1,5 @@
 get_u <- function(){
+  # Interpolate u to extend the series
   desemprego <- ipeadata("PNADC12_TDESOC12") %>%
     dplyr::select(date = date, valor = value) %>%
     mutate(date = as.Date(date)) %>% 
