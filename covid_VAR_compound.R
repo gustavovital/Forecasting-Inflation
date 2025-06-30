@@ -1,7 +1,7 @@
 rm(list = ls())
-library(tidyverse)
+source('requirement.R')
 
-# Load data
+# GET DATA ====
 COVID_forecast_m_t <- readRDS('data/COVID_forecast_m_t.rds')
 COVID_forecast_t <- readRDS('data/COVID_forecast_df.rds')
 COVID_forecast_c1_t <- readRDS('data/COVID_forecast_c1_t.rds')
@@ -80,7 +80,7 @@ COVID_compound_c2_t <- COVID_forecast_c2_t %>%
     .groups = "drop"
   )
 
-# Create compound VAR ====
+# CREATE VAR COMPOUND ====
 COVID_compound_c1_t$COMPOUND <- "CLASS I"
 COVID_compound_c2_t$COMPOUND <- "CLASS II"
 COVID_compound_m_t_VAR$COMPOUND <- "VAR/VECM - M"
@@ -97,7 +97,7 @@ COVID_compound_diff <- bind_rows(
   COVID_compound_t_BVAR
 )
 
-# Calculate average model
+# AVERAGE MODEL ====
 COVID_mean_diff <- COVID_compound_diff %>% 
   group_by(forecast_model, date) %>% 
   summarise(
@@ -110,9 +110,6 @@ COVID_mean_diff <- COVID_compound_diff %>%
   ) 
 
 COVID_mean_diff$COMPOUND <- 'AVERAGE MODEL'
-
-# Combine all
 COVID_compound_diff <- bind_rows(COVID_compound_diff, COVID_mean_diff)
 
-# Save results
 saveRDS(COVID_compound_diff, file = "data/COVID_forecast_compound_diff.rds")
