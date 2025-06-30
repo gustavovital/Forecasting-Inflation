@@ -12,7 +12,8 @@
 
 packages <- c(
   "sidrar", "seasonal", "urca", "ipeadatar", "quantmod", "tidyverse",
-  "rbcb", "tsibble", "lubridate", "BMR"
+  "rbcb", "tsibble", "lubridate", "BMR", "vars", "forecast", "glue", 
+  "patchwork", "RColorBrewer", "scales"
 )
 
 for (pkg in packages) {
@@ -32,6 +33,12 @@ library(tsibble)
 library(sidrar)
 library(lubridate)
 library(BMR)
+library(vars)
+library(forecast)
+library(glue)
+library(RColorBrewer)
+library(patchwork)
+library(scales)
 
 # FUNCTIONS ====
 source('get_u.R')
