@@ -1,3 +1,5 @@
+rm(list = ls())
+source('requirement.R')
 options(max.print = 100000)
 library(tidyverse)
 
@@ -16,54 +18,54 @@ series_names <- names(df)[!(names(df) %in% c("date", "D_COVID"))]
 
 # results
 unit_root_results_s <- COVID_data_statistic %>%
-  select(where(is.numeric)) %>%             
-  select(-D_COVID) %>%                      
+  dplyr::select(where(is.numeric)) %>%             
+  dplyr::select(-D_COVID) %>%                      
   imap_dfr(~ {
     result <- unit_root_table(.x)
     result$Variable <- .y
     result
   }) %>%
-  select(Variable, everything())   
+  dplyr::select(Variable, everything())   
 
 unit_root_results_qd <- COVID_data_quarter_d %>%
-  select(where(is.numeric)) %>%             
-  select(-D_COVID) %>%                      
+  dplyr::select(where(is.numeric)) %>%             
+  dplyr::select(-D_COVID) %>%                      
   imap_dfr(~ {
     result <- unit_root_table(.x)
     result$Variable <- .y
     result
   }) %>%
-  select(Variable, everything()) 
+  dplyr::select(Variable, everything()) 
 
 unit_root_results_ql <- COVID_data_quarter_l %>%
-  select(where(is.numeric)) %>%             
-  select(-D_COVID) %>%                      
+  dplyr::select(where(is.numeric)) %>%             
+  dplyr::select(-D_COVID) %>%                      
   imap_dfr(~ {
     result <- unit_root_table(.x)
     result$Variable <- .y
     result
   }) %>%
-  select(Variable, everything())      
+  dplyr::select(Variable, everything())      
 
 unit_root_results_md <- COVID_data_montly_d %>%
-  select(where(is.numeric)) %>%             
-  select(-D_COVID) %>%                      
+  dplyr::select(where(is.numeric)) %>%             
+  dplyr::select(-D_COVID) %>%                      
   imap_dfr(~ {
     result <- unit_root_table(.x)
     result$Variable <- .y
     result
   }) %>%
-  select(Variable, everything())     
+  dplyr::select(Variable, everything())     
 
 unit_root_results_ml <- COVID_data_montly_l %>%
-  select(where(is.numeric)) %>%             
-  select(-D_COVID) %>%                      
+  dplyr::select(where(is.numeric)) %>%             
+  dplyr::select(-D_COVID) %>%                      
   imap_dfr(~ {
     result <- unit_root_table(.x)
     result$Variable <- .y
     result
   }) %>%
-  select(Variable, everything())            
+  dplyr::select(Variable, everything())            
 
 print(unit_root_results_md)
 print(unit_root_results_ml)
