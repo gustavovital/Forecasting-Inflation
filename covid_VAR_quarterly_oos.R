@@ -1,21 +1,14 @@
 rm(list = ls())
 
-library(tidyverse)
-library(lubridate)
-library(vars)
-library(BMR)
-library(forecast)
-library(urca)
-library(glue)
+source('requirement.R')
 
-# Dados
-
+# GET DATA ----
 COVID_data_quarter_d <- readRDS("data/COVID_data_quarter_d.rds") %>%
   filter(date >= as.Date("2012-01-01"))
 COVID_data_quarter_l <- readRDS("data/COVID_data_quarter_l.rds") %>%
   filter(date >= as.Date("2012-01-01"))
 
-# Modelos
+# SETUP MODELS ----
 var_model_vars <- list(
   VAR_I     = c("p_livre", "p_admin", "brlx", "r"),
   VAR_II    = c("p_livre", "p_admin", "brlx", "selic", "pi_sa", "m1"),
@@ -39,6 +32,7 @@ var_model_lags <- list(
 forecast_starts <- seq(as.Date("2023-01-01"), as.Date("2025-03-01"), by = "quarter")
 forecast_df <- tibble()
 
+# FORECAST ----
 for (i in seq_along(forecast_starts)) {
   forecast_model_id <- as.character(as.roman(i))
   start_date <- as.Date("2012-01-01")
@@ -59,7 +53,7 @@ for (i in seq_along(forecast_starts)) {
       exog_fcst <- matrix(0, nrow = 4, ncol = 1)
       colnames(exog_fcst) <- "D_COVID"
       
-      # Get both 95% and 80% confidence intervals
+      
       forecast_95 <- predict(var_model, n.ahead = 4, ci = 0.95, dumvar = exog_fcst)
       forecast_80 <- predict(var_model, n.ahead = 4, ci = 0.80, dumvar = exog_fcst)
       
@@ -107,15 +101,15 @@ for (i in seq_along(forecast_starts)) {
       
       j <- which(colnames(Y) == "p_livre")
       
-      # Calculate 80% intervals as done in monthly script
+      
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
         model     = model_name,
         component = "p_livre",
         date      = seq(forecast_starts[i], by = "quarter", length.out = 4),
         mean      = fcst$forecast_mean[1:4, j],
-        lower_95  = fcst$plot_vals[1:4, 1, j],  # Column 1 = lower quantile
-        upper_95  = fcst$plot_vals[1:4, 3, j],  # Column 3 = upper quantile
+        lower_95  = fcst$plot_vals[1:4, 1, j],  
+        upper_95  = fcst$plot_vals[1:4, 3, j],  
         lower_80  = fcst$plot_vals[1:4, 1, j] + 0.2*(fcst$plot_vals[1:4, 3, j] - fcst$plot_vals[1:4, 1, j]),
         upper_80  = fcst$plot_vals[1:4, 3, j] - 0.2*(fcst$plot_vals[1:4, 3, j] - fcst$plot_vals[1:4, 1, j])
       )
@@ -129,7 +123,7 @@ for (i in seq_along(forecast_starts)) {
       jotest <- ca.jo(Y, type = "trace", ecdet = "const", K = 2)
       vec2var_model <- vec2var(jotest, r = 2)
       
-      # Get both 95% and 80% confidence intervals
+      
       forecast_95 <- predict(vec2var_model, n.ahead = 4, ci = 0.95, dumvar = matrix(0, nrow = 4, ncol = 1, dimnames = list(NULL, "D_COVID")))
       forecast_80 <- predict(vec2var_model, n.ahead = 4, ci = 0.80, dumvar = matrix(0, nrow = 4, ncol = 1, dimnames = list(NULL, "D_COVID")))
       

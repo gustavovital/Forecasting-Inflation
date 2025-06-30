@@ -1,25 +1,19 @@
 rm(list = ls()) 
 
-library(tidyverse)
-library(tsibble)
-library(forecast)
-library(vars)
-library(glue)
-library(lubridate)
+source('requirement.R')
 
-# Load data
+# GET DATA ----
 COVID_data_statistic <- readRDS("data/COVID_data_statistic.rds")
 COVID_data_statistic <- COVID_data_statistic %>% filter(date >= as.Date("2012-01-01"))
 
-# Rolling forecast windows
+# SETUP MODELS ----
 forecast_starts <- seq(as.Date("2023-01-01"), as.Date("2025-01-01"), by = "quarter")
-h <- 12  # forecast horizon
+h <- 12  
 
-# Strategies and lags
 strategies <- c("PC1", "PC2", "PC1_PC2", "COMBO")
 lags_list <- 1:6
 
-# Subgroups (class I)
+# CLASS I ----
 subgrupos <- list(
   atividade = list(energia = c("e1", "e2", "e3"), producao = c("comercio", "uci", "u")),
   externo = list(precos_ext = c("ppi", "epi", "ipi"), quantum = c("quantum_x", "quantum_m")),
@@ -29,7 +23,7 @@ subgrupos <- list(
   choques = list(energia = c("crb", "gas", "oil"), combust = c("petrol", "ipa_ipc"))
 )
 
-# Groups (class II)
+# CLASS II
 grupos <- list(
   atividade = c("comercio", "e1", "e2", "e3", "uci", "u"),
   externo = c("vix", "ppi", "epi", "ipi", "quantum_x", "quantum_m"),
@@ -39,7 +33,6 @@ grupos <- list(
   choques = c("crb", "gas", "ipa_ipc", "oil", "petrol")
 )
 
-# Function to extract PCs
 get_pcs <- function(df, vars) {
   X <- df[, vars] %>% na.omit()
   if (nrow(X) == 0) return(matrix(NA, nrow = nrow(df), ncol = 2))
@@ -58,7 +51,7 @@ get_pcs <- function(df, vars) {
 forecast_stat_class1 <- list()
 forecast_stat_class2 <- list()
 
-# CLASS I
+# FORECAST - CLASS I ----
 forecast_count <- 1
 for (start in forecast_starts) {
   end <- as.Date(start) %m-% months(1)
@@ -108,7 +101,7 @@ for (start in forecast_starts) {
                   
                   model <- try(VAR(X, p = lag, type = "const", exogen = exog), silent = TRUE)
                   if (!inherits(model, "try-error")) {
-                    # Get both 95% and 80% confidence intervals
+                    
                     fc_95 <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
                     fc_80 <- try(predict(model, n.ahead = h, ci = 0.80, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
                     
@@ -148,7 +141,7 @@ for (start in forecast_starts) {
 COVID_forecast_stat_class1 <- bind_rows(forecast_stat_class1)
 COVID_forecast_c1 <- COVID_forecast_stat_class1
 
-# Quarterly transformation with both CIs
+
 COVID_forecast_c1_t <- COVID_forecast_c1 %>%
   mutate(
     mean = mean / 100,
@@ -175,10 +168,10 @@ COVID_forecast_c1_t <- COVID_forecast_c1 %>%
 saveRDS(COVID_forecast_c1, file = "data/COVID_forecast_c1.rds")
 saveRDS(COVID_forecast_c1_t, file = "data/COVID_forecast_c1_t.rds")
 
-# CLASS II
 grupo_combos <- combn(names(grupos), 3)
-
 forecast_count <- 1
+
+# FORECAST - CLASS II
 for (start in forecast_starts) {
   end <- as.Date(start) %m-% months(1)
   df_train <- COVID_data_statistic %>% filter(date <= end)
@@ -216,7 +209,7 @@ for (start in forecast_starts) {
         
         model <- try(VAR(X, p = lag, type = "const", exogen = exog), silent = TRUE)
         if (!inherits(model, "try-error")) {
-          # Get both 95% and 80% confidence intervals
+          
           fc_95 <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
           fc_80 <- try(predict(model, n.ahead = h, ci = 0.80, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
           
@@ -251,7 +244,7 @@ for (start in forecast_starts) {
 COVID_forecast_stat_class2 <- bind_rows(forecast_stat_class2)
 COVID_forecast_c2 <- COVID_forecast_stat_class2
 
-# Quarterly transformation with both CIs
+
 COVID_forecast_c2_t <- COVID_forecast_c2 %>%
   mutate(
     mean = mean / 100,

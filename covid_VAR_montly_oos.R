@@ -1,22 +1,15 @@
 rm(list = ls())
 
-library(tidyverse)
-library(lubridate)
-library(vars)
-library(BMR)
-library(forecast)
-library(urca)
-library(glue)
+source('requirement.R')
 
-# Carregar dados
+# GET DATA ----
 COVID_data_montly_d <- readRDS("data/COVID_data_montly_d.rds")
 COVID_data_montly_l <- readRDS("data/COVID_data_montly_l.rds")
 
-# Cortar a base de dados
 COVID_data_montly_d <- COVID_data_montly_d %>% filter(date >= as.Date("2012-01-01"))
 COVID_data_montly_l <- COVID_data_montly_l %>% filter(date >= as.Date("2012-01-01"))
 
-# Definição dos modelos
+# SETUP MODELS ----
 var_model_vars <- list(
   VAR_I     = c("p_livre", "p_admin", "brlx", "r"),
   VAR_II    = c("p_livre", "p_admin", "brlx", "selic", "pi_sa", "m1"),
@@ -37,11 +30,10 @@ var_model_lags <- list(
   VECM      = 1
 )
 
-# Criar janelas trimestrais
 forecast_starts <- seq(as.Date("2023-01-01"), as.Date("2025-01-01"), by = "q")
 forecast_df <- tibble()
 
-# Loop de previsão
+# FORECAST ----
 for (i in seq_along(forecast_starts)) {
   
   forecast_model_id <- as.character(as.roman(i))
@@ -87,7 +79,6 @@ for (i in seq_along(forecast_starts)) {
       Y <- data.matrix(data_var[, var_model_vars[[vars]]])
       X_exog <- data.matrix(data_var[, "D_COVID", drop = FALSE])
       
-      # Garantir alinhamento
       common_rows <- intersect(rownames(Y), rownames(X_exog))
       Y <- Y[common_rows, , drop = FALSE]
       X_exog <- X_exog[common_rows, , drop = FALSE]
@@ -114,15 +105,14 @@ for (i in seq_along(forecast_starts)) {
       
       j <- which(colnames(Y) == "p_livre")
       
-      # Extract proper quantiles - using columns 1-3 of plot_vals
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
         model     = model_name,
         component = "p_livre",
         date      = seq(forecast_starts[i], by = "month", length.out = 12),
         mean      = fcst$forecast_mean[1:12, j],
-        lower_95  = fcst$plot_vals[1:12, 1, j],  # Column 1 = lower quantile
-        upper_95  = fcst$plot_vals[1:12, 3, j],  # Column 3 = upper quantile
+        lower_95  = fcst$plot_vals[1:12, 1, j],  
+        upper_95  = fcst$plot_vals[1:12, 3, j],  
         lower_80  = fcst$plot_vals[1:12, 1, j] + 0.2*(fcst$plot_vals[1:12, 3, j] - fcst$plot_vals[1:12, 1, j]),
         upper_80  = fcst$plot_vals[1:12, 3, j] - 0.2*(fcst$plot_vals[1:12, 3, j] - fcst$plot_vals[1:12, 1, j])
       )
@@ -131,30 +121,26 @@ for (i in seq_along(forecast_starts)) {
       
     } else if (model_name == "VECM") {
       
-      # Extract endogenous and exogenous parts
       data_var <- train_l[c("date", var_model_vars[[vars]], "D_COVID")] %>%
         column_to_rownames("date")
       
       Y <- data_var[, var_model_vars[[vars]]]
       
-      # Ensure exogenous dummy is a matrix and aligned with Y
-      X_exog <- data_var[, "D_COVID", drop = FALSE]  # keep it as df
-      X_exog <- as.matrix(X_exog)                   # convert to matrix
-      rownames(X_exog) <- rownames(Y)               # enforce rowname match
+      X_exog <- data_var[, "D_COVID", drop = FALSE]  
+      X_exog <- as.matrix(X_exog)                   
+      rownames(X_exog) <- rownames(Y)               
       
-      # Check dimensions (optional sanity)
-      # print(dim(Y))
-      # print(dim(X_exog))
+      
       stopifnot(identical(rownames(Y), rownames(X_exog)))
       
       # colnames(X_exog) <- "D_COVID"
-      # Estimate cointegration with exogenous regressor outside cointegration space
+      
       jotest <- ca.jo(Y, type = "trace", ecdet = "const", K = 2, dumvar = X_exog)
       
-      # Convert to VAR representation
+      
       vec2var_model <- vec2var(jotest, r = 2)
       
-      # Forecast with zero dummy going forward
+      
       X_future <- matrix(0, nrow = 12, ncol = 1)
       colnames(X_future) <- "D_COVID"
       
@@ -203,9 +189,5 @@ COVID_forecast_m_t <- COVID_forecast_m %>%
     .groups = "drop"
   )
 
-
-# COVID_forecast_m <- readRDS("data/COVID_forecast_m.rds")
 saveRDS(COVID_forecast_m, file = "data/COVID_forecast_m.rds")
 saveRDS(COVID_forecast_m_t, file = "data/COVID_forecast_m_t.rds")
-# saveRDS(forecast_m_acc, file = "data/forecast_m_acc.rds")
-# saveRDS(forecast_m_acc_t, file = "data/forecast_m_acc_t.rds")
