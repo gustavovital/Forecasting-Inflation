@@ -69,8 +69,7 @@ g_series <- function(codigo, nome) {
   get_series(codigo, start_date = "2009-12-01") %>%
     rename(date = date, !!nome := !!sym(as.character(codigo))) %>%
     mutate(date = floor_date(date, "month")) %>%
-    arrange(date) %>% 
-    filter(date < as.Date('2025-01-01'))
+    arrange(date)
 }
 
 acum_series <- function(data) {
@@ -98,7 +97,7 @@ add_variable <- function(df, var_df, var_name) {
   
   full_join(df, var_df_renamed, by = "date") %>%
     arrange(date) %>% 
-    filter(date >= as.Date('2010-01-01') & date < as.Date('2025-01-01'))
+    filter(date >= as.Date('2010-01-01'))
   
 }
 

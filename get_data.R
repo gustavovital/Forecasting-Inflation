@@ -1,11 +1,26 @@
 # GET DATA ====
-data_montly_d <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "month"))
-data_montly_l <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "month"))
+data_montly_d <- tibble(date = seq.Date(as.Date("2010-01-01"), floor_date(Sys.Date(), "month"), by = "month"))
+data_montly_l <- tibble(date = seq.Date(as.Date("2010-01-01"), floor_date(Sys.Date(), "month"), by = "month"))
 
-data_quarter_d <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "quarter"))
-data_quarter_l <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "quarter"))
+data_quarter_d <- tibble(date = seq.Date(as.Date("2010-01-01"), floor_date(Sys.Date(), "month"), by = "quarter"))
+data_quarter_l <- tibble(date = seq.Date(as.Date("2010-01-01"), floor_date(Sys.Date(), "month"), by = "quarter"))
 
-data_statistic <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12-01"), by = "month"))
+data_statistic <- tibble(date = seq.Date(as.Date("2010-01-01"), floor_date(Sys.Date(), "month"), by = "month"))
+
+# maybe it works.. ####
+# Função para diferença com NAs para alinhar tamanho
+safe_diff <- function(x, lag = 1) {
+  c(rep(NA, lag), diff(x, lag = lag))
+}
+
+# Função para gerar coluna de diff e fazer left_join
+join_diff <- function(base, serie_df, var_name, lag = 1) {
+  diff_col <- serie_df %>%
+    arrange(date) %>%
+    mutate(!!paste0(var_name, "_diff") := safe_diff(.data[[var_name]], lag = lag)) %>%
+    select(date, !!paste0(var_name, "_diff"))
+  base %>% left_join(diff_col, by = "date")
+}
 
 #...............................................................................
 # COMPONENTES MENSAIS ====
@@ -13,9 +28,12 @@ data_statistic <- tibble(date = seq.Date(as.Date("2010-01-01"), as.Date("2024-12
 #.......... Preços Livres ====
 #...............................................................................
 p_livre <- g_series(11428, 'p_livre') 
-data_montly_d <- add_variable(data_montly_d, p_livre, "p_livre")
-
 p_livre_acum <- acum_series_pct(p_livre)
+
+data_montly_d <- data_montly_d %>%
+  left_join(p_livre, by = 'date') 
+
+data_montly_d <- add_variable(data_montly_d, p_livre, "p_livre")
 data_montly_l <- add_variable(data_montly_l, p_livre_acum, "p_livre")
 
 #...............................................................................
@@ -31,8 +49,7 @@ data_montly_d <- add_variable(data_montly_d, p_admin, "p_admin")
 #.......... Expectations ====
 #...............................................................................
 source('get_expectations.R')
-exp <- exp %>% 
-  filter(date < as.Date('2025-01-01'))
+exp <- exp
 
 #...............................................................................
 #.......... Exchange Rate BRL/US$ ====
@@ -54,8 +71,7 @@ cambio <- cambio %>%
   summarise(brlx = mean(`BRL=X.Close`, na.rm = TRUE)) %>%
   ungroup() %>%
   rename(date = mes) %>% 
-  filter(date >= as.Date('2009-12-01')) %>% 
-  filter(date < as.Date('2025-01-01'))
+  filter(date >= as.Date('2009-12-01'))
 
 data_montly_l$brlx <- cambio$brlx[cambio$date >= as.Date('2010-01-01')]
 data_montly_d$brlx <- diff(cambio$brlx)
@@ -66,8 +82,7 @@ data_montly_d$brlx <- diff(cambio$brlx)
 selic <- ipeadatar::ipeadata("BM12_TJOVER12") %>%
   dplyr::select(date, valor = value) %>%
   filter(date >= as.Date('2009-12-01')) %>% 
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+  arrange(date) 
 
 data_montly_d$selic <- diff(selic$valor[selic$date >= as.Date('2009-12-01')])
 
@@ -92,10 +107,20 @@ pi_ts <- ts(pi$pi, start = c(year(min(pi$date)), month(min(pi$date))), frequency
 x13 <- seasonal::seas(pi_ts)
 pi_sa <- seasonal::final(x13)
 
+safe_diff <- function(base, serie, lag = 1) {
+  n_base <- nrow(base)
+  n_diff <- length(diff(serie, lag = lag))
+  n_na <- n_base - n_diff
+  result <- c(rep(NA, n_na), diff(serie, lag = lag))
+  return(result)
+}
+
 pi_sa <- pi %>%
   mutate(pi = as.numeric(pi_sa))
 
-data_montly_d$pi <- diff(pi$pi)
+# data_montly_d$pi <- diff(pi$pi)
+data_montly_d$pi <- safe_diff(data_montly_d, pi$pi)
+
 data_montly_d$pi_sa <- diff(pi_sa$pi)
 data_montly_l$pi <- pi$pi[pi$date >= as.Date('2010-01-01')]
 #...............................................................................
