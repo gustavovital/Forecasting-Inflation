@@ -18,7 +18,7 @@ join_diff <- function(base, serie_df, var_name, lag = 1) {
   diff_col <- serie_df %>%
     arrange(date) %>%
     mutate(!!paste0(var_name, "_diff") := safe_diff(.data[[var_name]], lag = lag)) %>%
-    select(date, !!paste0(var_name, "_diff"))
+    dplyr::select(date, !!paste0(var_name))
   base %>% left_join(diff_col, by = "date")
 }
 
@@ -33,14 +33,20 @@ p_livre_acum <- acum_series_pct(p_livre)
 data_montly_d <- data_montly_d %>%
   left_join(p_livre, by = 'date') 
 
-data_montly_d <- add_variable(data_montly_d, p_livre, "p_livre")
-data_montly_l <- add_variable(data_montly_l, p_livre_acum, "p_livre")
+data_montly_l <- data_montly_l %>%
+  left_join(p_livre_acum, by = 'date') 
+
+# data_montly_d <- add_variable(data_montly_d, p_livre, "p_livre")
+# data_montly_l <- add_variable(data_montly_l, p_livre_acum, "p_livre")
 
 #...............................................................................
 #.......... Preços Administrados ====
 #...............................................................................
 p_admin <- g_series(4449, 'p_admin') 
-data_montly_d <- add_variable(data_montly_d, p_admin, "p_admin")
+# data_montly_d <- add_variable(data_montly_d, p_admin, "p_admin")
+
+data_montly_d <- data_montly_d %>%
+  left_join(p_admin, by = 'date') 
 
 # p_admin_acum <- acum_series(p_admin)
 # data_montly_l <- add_variable(data_montly_l, p_admin_acum, "p_admin")
@@ -73,8 +79,12 @@ cambio <- cambio %>%
   rename(date = mes) %>% 
   filter(date >= as.Date('2009-12-01'))
 
-data_montly_l$brlx <- cambio$brlx[cambio$date >= as.Date('2010-01-01')]
-data_montly_d$brlx <- diff(cambio$brlx)
+data_montly_l <- data_montly_l %>% 
+  left_join(cambio, by='date')
+
+# data_montly_l$brlx <- cambio$brlx[cambio$date >= as.Date('2010-01-01')]
+# data_montly_d$brlx <- diff(cambio$brlx)
+data_montly_d <- join_diff(data_montly_d, cambio, 'brlx')
 
 #...............................................................................
 #.......... i (nominal interest rate) ====
@@ -84,18 +94,25 @@ selic <- ipeadatar::ipeadata("BM12_TJOVER12") %>%
   filter(date >= as.Date('2009-12-01')) %>% 
   arrange(date) 
 
-data_montly_d$selic <- diff(selic$valor[selic$date >= as.Date('2009-12-01')])
+# data_montly_d$selic <- diff(selic$valor[selic$date >= as.Date('2009-12-01')])
+
+data_montly_d <- join_diff(data_montly_d, selic, 'valor') %>% 
+  dplyr::rename(selic = valor)
 
 # selic_a <- acum_series(selic)
-data_montly_l$selic <- selic$valor[selic$date >= as.Date('2010-01-01')]
-
+# data_montly_l$selic <- selic$valor[selic$date >= as.Date('2010-01-01')]
+data_montly_l <- data_montly_l %>% left_join(selic, by='date')
+data_montly_l <- data_montly_l %>% dplyr::rename(selic = valor)
 #...............................................................................
 #.......... r (real interest rate) ====
 #...............................................................................
 r <- tibble(date = selic$date,
             value = selic$valor - exp$valor)
 
-data_montly_d$r <- r$value[r$date >= as.Date('2010-01-01')]
+# data_montly_d$r <- r$value[r$date >= as.Date('2010-01-01')]
+
+data_montly_d <- data_montly_d %>% left_join(r, by='date') %>% 
+  dplyr::rename(r = value)
 
 #...............................................................................
 #.......... Produção Industrial Brasil ====
@@ -107,28 +124,32 @@ pi_ts <- ts(pi$pi, start = c(year(min(pi$date)), month(min(pi$date))), frequency
 x13 <- seasonal::seas(pi_ts)
 pi_sa <- seasonal::final(x13)
 
-safe_diff <- function(base, serie, lag = 1) {
-  n_base <- nrow(base)
-  n_diff <- length(diff(serie, lag = lag))
-  n_na <- n_base - n_diff
-  result <- c(rep(NA, n_na), diff(serie, lag = lag))
-  return(result)
-}
+# safe_diff <- function(base, serie, lag = 1) {
+#   n_base <- nrow(base)
+#   n_diff <- length(diff(serie, lag = lag))
+#   n_na <- n_base - n_diff
+#   result <- c(rep(NA, n_na), diff(serie, lag = lag))
+#   return(result)
+# }
 
 pi_sa <- pi %>%
   mutate(pi = as.numeric(pi_sa))
 
 # data_montly_d$pi <- diff(pi$pi)
-data_montly_d$pi <- safe_diff(data_montly_d, pi$pi)
+# data_montly_d$pi <- safe_diff(data_montly_d, pi$pi)
 
-data_montly_d$pi_sa <- diff(pi_sa$pi)
-data_montly_l$pi <- pi$pi[pi$date >= as.Date('2010-01-01')]
+data_montly_d <- data_montly_d %>% join_diff(pi, 'pi')
+# data_montly_d$pi_sa <- diff(pi_sa$pi)
+data_montly_d <- data_montly_d %>% join_diff(pi_sa, 'pi') %>% dplyr::rename(pi = pi.x, pi_sa = pi.y)
+# data_montly_l$pi <- pi$pi[pi$date >= as.Date('2010-01-01')]
+data_montly_l <- data_montly_l %>% left_join(pi, by='date')
 #...............................................................................
 #.......... Moeda ====
 #...............................................................................
 m1 <- g_series(27841, 'm1')
-data_montly_d$m1 <- diff(m1$m1)
+# data_montly_d$m1 <- diff(m1$m1)
 
+data_montly_d <- data_montly_d %>% join_diff(m1, 'm1')
 
 saveRDS(data_montly_l, file = "data/data_montly_l.rds")
 saveRDS(data_montly_d, file = "data/data_montly_d.rds")
