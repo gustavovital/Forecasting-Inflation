@@ -3,8 +3,8 @@ rm(list = ls())
 data_statistic <- readRDS("data/data_statistic.rds")
 data_montly_d <- readRDS("data/data_montly_d.rds")
 data_montly_l <- readRDS("data/data_montly_l.rds")
-data_quarter_d <- readRDS("data/data_quarter_d.rds") %>% filter(date >= as.Date("2012-01-01"))
-data_quarter_l <- readRDS("data/data_quarter_l.rds") %>% filter(date >= as.Date("2012-01-01"))
+data_quarter_d <- readRDS("data/data_quarter_d.rds")
+data_quarter_l <- readRDS("data/data_quarter_l.rds")
 
 # Apply to all relevant datasets
 COVID_data_statistic <- data_statistic %>%
