@@ -7,6 +7,7 @@ data_quarter_l <- tibble(date = seq.Date(as.Date("2010-01-01"), floor_date(Sys.D
 
 data_statistic <- tibble(date = seq.Date(as.Date("2010-01-01"), floor_date(Sys.Date(), "month"), by = "month"))
 
+last_date <- floor_date(Sys.Date(), "month")
 # maybe it works.. ####
 # Função para diferença com NAs para alinhar tamanho
 safe_diff <- function(x, lag = 1) {
@@ -172,8 +173,11 @@ p_livre_T <- tibble(date = p_livret$quarter,
 
 p_livre_T_acum <- acum_series(p_livre_T)
 
-data_quarter_d$p_livre <- p_livre_T$p_livre
-data_quarter_l$p_livre <- p_livre_T_acum$p_livre
+data_quarter_d <- data_quarter_d %>% left_join(p_livre_T, by='date')
+data_quarter_l <- data_quarter_l %>% left_join(p_livre_T_acum, by = 'date')
+
+# data_quarter_d$p_livre <- p_livre_T$p_livre
+# data_quarter_l$p_livre <- p_livre_T_acum$p_livre
 #...............................................................................
 #.......... Preços Administrados ====
 #...............................................................................
@@ -189,69 +193,101 @@ p_admint <- p_admin %>%
 p_admin_T <- tibble(date = p_admint$quarter,
                     p_admin = p_admint$p_admin)
 
-data_quarter_d$p_admin <- p_admin_T$p_admin
+# data_quarter_d$p_admin <- p_admin_T$p_admin
 
+data_quarter_d <- data_quarter_d %>% left_join(p_admin_T, by='date')
 #...............................................................................
 #.......... cambio ====
 #...............................................................................
 brlx_T <- to_quarterly(data_montly_d, brlx)
 brlx_T_acum <- to_quarterly(data_montly_l, brlx)
 
-data_quarter_d$brlx <- brlx_T$brlx
-data_quarter_l$brlx <- brlx_T_acum$brlx
+data_quarter_d <- data_quarter_d %>% left_join(brlx_T, by='date')
+data_quarter_l <- data_quarter_l %>% left_join(brlx_T_acum, by='date')
+# data_quarter_d$brlx <- brlx_T$brlx
+# data_quarter_l$brlx <- brlx_T_acum$brlx
 
 #...............................................................................
 #.......... Juros Reais ====
 #...............................................................................
 r_T <- to_quarterly(data_montly_d, r)
 
-data_quarter_d$r <- r_T$r
+# data_quarter_d$r <- r_T$r
+data_quarter_d <- data_quarter_d %>% left_join(r_T, by = 'date')
 #...............................................................................
 #.......... Juros Nominais ====
 #...............................................................................
 selic_T <- to_quarterly(data_montly_d, selic)
 
-data_quarter_d$selic <- selic_T$selic
-data_quarter_l$selic <- selic_T$selic
+data_quarter_d <- data_quarter_d %>% left_join(selic_T, by='date')
+data_quarter_l <- data_quarter_l %>% left_join(selic_T, by='date')
+
+# data_quarter_d$selic <- selic_T$selic
+# data_quarter_l$selic <- selic_T$selic
 #...............................................................................
 #.......... Produção Industrial Brasil ====
 #...............................................................................
 pi_T <- to_quarterly(data_montly_d, pi_sa)
-data_quarter_d$pi_sa <- pi_T$pi_sa
-
-data_quarter_l$pi_sa <- pi_T$pi_sa[pi_T$date > as.Date('2009-12-01')]
+data_quarter_d <- data_quarter_d %>% left_join(pi_T, by='date')
+data_quarter_l <- data_quarter_l %>% left_join(pi_T, by='date')
+# data_quarter_d$pi_sa <- pi_T$pi_sa
+# data_quarter_l$pi_sa <- pi_T$pi_sa[pi_T$date > as.Date('2009-12-01')]
 
 #...............................................................................
 #.......... Moeda ====
 #...............................................................................
 m1_T <- to_quarterly_last(data_montly_d, m1)
-data_quarter_d$m1 <- m1_T$m1
+# data_quarter_d$m1 <- m1_T$m1
+data_quarter_d <- data_quarter_d %>% left_join(m1_T, by='date')
+
 #...............................................................................
 #.......... EMBI (premio de risco) ====
 #...............................................................................
 # Treasury 3M (EUA) – FRED
-getSymbols("DTB3", src = "FRED", from = "2010-01-01")
-us3m <- tibble(
-  date = index(DTB3),
-  us3m = as.numeric(DTB3$DTB3)
-)
+# getSymbols("TB3MS", src = "FRED", from = "2010-01-01",
+#            auto.assign = FALSE)
+# # getSymbols("DTB3", src = "yahoo", from = "2010-01-01")
+# us3m <- tibble(
+#   date = index(DTB3),
+#   us3m = as.numeric(DTB3$DTB3)
+# )
 
-risco <- full_join(selic, us3m, by = "date") %>%
-  mutate(date = floor_date(date, "month")) %>%
+tb3m <- fredr_series_observations(
+  series_id         = "TB3MS",
+  observation_start = as.Date("2010-01-01"),
+  frequency         = "m"
+) %>%
+  transmute(
+    date = floor_date(date, "month"),
+    us3m = value
+  ) %>%
   group_by(date) %>%
-  summarise(
-    selic = mean(valor, na.rm = TRUE),
-    us3m = mean(us3m, na.rm = TRUE)
-  ) %>%
-  mutate(
-    risco = selic - us3m  # spread simples (% a.a.)
-  ) %>%
-  filter(!is.na(risco)) %>%
-  mutate(valor = risco * 100) %>% 
+  summarise(us3m = mean(us3m, na.rm = TRUE), .groups = "drop") %>%
+  filter(date <= last_date)
+
+
+# risco <- full_join(selic, us3m, by = "date") %>%
+#   mutate(date = floor_date(date, "month")) %>%
+#   group_by(date) %>%
+#   summarise(
+#     selic = mean(valor, na.rm = TRUE),
+#     us3m = mean(us3m, na.rm = TRUE)
+#   ) %>%
+#   mutate(
+#     risco = selic - us3m  # spread simples (% a.a.)
+#   ) %>%
+#   filter(!is.na(risco)) %>%
+#   mutate(valor = risco * 100) %>% 
+#   dplyr::select(date, valor)
+
+risco <- selic %>%
+  left_join(tb3m, by = "date") %>%
+  mutate(valor = (valor - us3m) * 100) %>%
   dplyr::select(date, valor)
 
 risco_T <- to_quarterly(risco, valor)
-data_quarter_d$embi <- risco_T$valor
+# data_quarter_d$embi <- risco_T$valor
+data_quarter_d <- data_quarter_d %>% left_join(risco_T, by='date')
 
 saveRDS(data_quarter_l, file = "data/data_quarter_l.rds")
 saveRDS(data_quarter_d, file = "data/data_quarter_d.rds")
