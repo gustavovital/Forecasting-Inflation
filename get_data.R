@@ -305,10 +305,10 @@ comercio <- sidrar::get_sidra(
   mutate(date = ym(data)) %>%
   dplyr::select(date, valor) %>%
   arrange(date) %>%
-  filter(date >= as.Date("2009-12-01")) %>% 
-  filter(date < as.Date("2025-01-01")) 
+  filter(date >= as.Date("2009-12-01")) 
 
-data_statistic$comercio <- diff(comercio$valor)
+# data_statistic$comercio <- diff(comercio$valor)
+data_statistic <- data_statistic %>% join_diff(comercio, 'valor') %>% dplyr::rename(comercio = valor)
 #...............................................................................
 #.................... Energia Eletrica ====
 #...............................................................................
@@ -316,17 +316,23 @@ energia_total <- g_series(1406,  'valor')
 energia_industrial <- g_series(1404, 'valor') 
 energia_residencial <- g_series(1403, 'valor') 
 
+data_statistic <- data_statistic %>% join_diff(energia_total, 'valor') %>% rename(e1 = valor)
+data_statistic <- data_statistic %>% join_diff(energia_industrial, 'valor') %>% rename(e2 = valor)
+data_statistic <- data_statistic %>% join_diff(energia_residencial, 'valor') %>% rename(e3 = valor)
 
-data_statistic$e1 <- diff(energia_total$valor)
-data_statistic$e2 <- diff(energia_industrial$valor)
-data_statistic$e3 <- diff(energia_residencial$valor)
+
+# data_statistic$e1 <- diff(energia_total$valor)
+# data_statistic$e2 <- diff(energia_industrial$valor)
+# data_statistic$e3 <- diff(energia_residencial$valor)
 
 
 #...............................................................................
 #.................... PIB ====
 #...............................................................................
 ibcbr <- g_series(29609, 'ibcbr') 
-data_statistic$ibcbr <- diff(ibcbr$ibcbr)
+
+data_statistic <- data_statistic %>% join_diff(ibcbr, 'ibcbr')
+# data_statistic$ibcbr <- diff(ibcbr$ibcbr)
 #...............................................................................
 #.................... Capacidade instalada ====
 #...............................................................................
@@ -336,14 +342,15 @@ uci <- ipeadata("CNI12_NUCAPD12") %>%
   filter(date >= as.Date("2009-12-01")) %>% 
   filter(date < as.Date("2025-01-01")) 
 
-data_statistic$uci <- diff(uci$valor)
+# data_statistic$uci <- diff(uci$valor)
+data_statistic <- data_statistic %>% join_diff(uci, 'valor') %>% dplyr::rename(uci = valor)
 
 #...............................................................................
 #.................... Desemprego ====
 #...............................................................................
 u <- get_u()
-data_statistic$u <- diff(u$u)
-
+# data_statistic$u <- diff(u$u)
+data_statistic <- data_statistic %>% join_diff(u, 'u')
 #...............................................................................
 #.......... EXTERNO ====
 #...............................................................................
@@ -357,55 +364,80 @@ vix<-vix %>%
   group_by(month) %>%
   summarise(valor = mean(`VIX.Close`, na.rm = TRUE)) %>%
   ungroup() %>%
-  rename(date = month) %>% 
-  filter(date < as.Date('2025-01-01')) %>% 
+  rename(date = month)  %>% 
   filter(date >= as.Date("2009-12-01"))
 
-data_statistic$vix <- (vix$valor)
-
+# data_statistic$vix <- (vix$valor)
+data_statistic <- data_statistic %>% join_diff(vix, 'valor') %>% dplyr::rename(vix = valor)
 #...............................................................................
 #....................  PPI norte-americano ====
 #...............................................................................
-getSymbols("PPIACO", src = "FRED", from = "2009-12-01")
+ppiaco <- fredr_series_observations(
+  series_id         = "PPIACO",
+  observation_start = as.Date("2009-12-01"),
+  frequency         = "m"
+) %>%
+  transmute(
+    date  = floor_date(date, "month"),
+    ppiaco = value
+  ) %>%
+  filter(date >= as.Date("2009-12-01"))
 
-ppi <- zoo::fortify.zoo(PPIACO)
+# ppi <- zoo::fortify.zoo(PPIACO)
 
-ppi <-ppi  %>%
-  mutate(date = floor_date(Index, "month")) %>%
-  group_by(date) %>%
-  summarise(valor = mean(PPIACO, na.rm = TRUE)) %>%
-  ungroup() %>% 
-  filter(date < as.Date('2025-01-01'))
+# ppi <-ppi  %>%
+#   mutate(date = floor_date(Index, "month")) %>%
+#   group_by(date) %>%
+#   summarise(valor = mean(PPIACO, na.rm = TRUE)) %>%
+#   ungroup() %>% 
+#   filter(date < as.Date('2025-01-01'))
 
-data_statistic$ppi <- diff(ppi$valor)
+data_statistic <- data_statistic %>% join_diff(ppiaco, 'ppiaco') %>% dplyr::rename(ppi = ppiaco)
+# data_statistic$ppi <- diff(ppi$valor)
 #...............................................................................
 #....................  índice de preços de exportação ====
 #...............................................................................
-getSymbols("IQ", src = "FRED", from = "2009-12-01")
-epi <- zoo::fortify.zoo(IQ)
+# getSymbols("IQ", src = "FRED", from = "2009-12-01")
+# epi <- zoo::fortify.zoo(IQ)
+# 
+# epi <- epi %>%
+#   mutate(date = floor_date(Index, "month")) %>%
+#   group_by(date) %>%
+#   summarise(valor = mean(IQ, na.rm = TRUE)) %>%
+#   ungroup() %>% 
+#   filter(date < as.Date('2025-01-01'))
+epi <- fredr_series_observations(
+  series_id         = "IQ",
+  observation_start = as.Date("2009-12-01"),
+  frequency         = "m"
+) %>%
+  transmute(
+    date = floor_date(date, "month"),
+    epi  = value
+  ) %>%
+  filter(date < last_date)
 
-epi <- epi %>%
-  mutate(date = floor_date(Index, "month")) %>%
-  group_by(date) %>%
-  summarise(valor = mean(IQ, na.rm = TRUE)) %>%
-  ungroup() %>% 
-  filter(date < as.Date('2025-01-01'))
-
-data_statistic$epi <- diff(epi$valor)
+data_statistic <- data_statistic %>% join_diff(epi, 'epi')
+# data_statistic$epi <- diff(epi$valor)
 #...............................................................................
 #....................  índice de preços de exportação ====
 #...............................................................................
-getSymbols("IR", src = "FRED", from = "2009-12-01")
-ipi <- zoo::fortify.zoo(IR)
+ipi <- fredr_series_observations(
+  series_id         = "IR",
+  observation_start = as.Date("2009-12-01"),
+  frequency         = "m"
+) %>%
+  transmute(
+    date = floor_date(date, "month"),
+    ipi  = value
+  ) %>%
+  filter(date < last_date)
 
-ipi <- ipi  %>%
-  mutate(date = floor_date(Index, "month")) %>%
-  group_by(date) %>%
-  summarise(valor = mean(IR, na.rm = TRUE)) %>%
-  ungroup() %>% 
-  filter(date < as.Date('2025-01-01'))
+# 2. Juntar na base e calcular a diferença automaticamente
+data_statistic <- data_statistic %>%
+  join_diff(ipi, "ipi")
 
-data_statistic$ipi <- diff(ipi$valor)
+# data_statistic$ipi <- diff(ipi$valor)
 #...............................................................................
 #....................  índice de preços de exportação ====
 #...............................................................................
@@ -415,7 +447,8 @@ quantum_exp <- ipeadata("FUNCEX12_XQT12") %>%
   filter(date >= as.Date("2009-12-01")) %>% 
   filter(date < as.Date('2025-01-01'))
 
-data_statistic$quantum_x <- diff(quantum_exp$valor)
+data_statistic <- data_statistic %>% join_diff(quantum_exp, 'valor') %>% dplyr::rename(quantum_x = valor)
+# data_statistic$quantum_x <- diff(quantum_exp$valor)
 #...............................................................................
 #....................  índice de preços de exportação ====
 #...............................................................................
@@ -425,7 +458,8 @@ quantum_imp <- ipeadata("FUNCEX12_MDQT12") %>%
   filter(date >= as.Date("2009-12-01")) %>% 
   filter(date < as.Date('2025-01-01'))
 
-data_statistic$quantum_m <- diff(quantum_imp$valor)
+data_statistic <- data_statistic %>% join_diff(quantum_imp, 'valor') %>% dplyr::rename(quantum_m = valor)
+# data_statistic$quantum_m <- diff(quantum_imp$valor)
 #...............................................................................
 #.......... FINANCEIRO ====
 #...............................................................................
@@ -434,8 +468,7 @@ data_statistic$quantum_m <- diff(quantum_imp$valor)
 selic <- ipeadatar::ipeadata("BM12_TJOVER12") %>%
   dplyr::select(date, valor = value) %>%
   filter(date >= as.Date('2009-12-01')) %>% 
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+  arrange(date) 
 
 # ipca_3m <- get_top5s_monthly_market_expectations("IPCA", start_date = "2009-12-01") %>%
 #   filter(typeCalc == "C", reference_date == format(date %m+% months(3), "%m/%Y")) %>%
@@ -465,8 +498,7 @@ igpm_obs <- rbcb::get_series(189, start_date = "2009-12-01")  # série IGP-M
 igpm_obs <- igpm_obs %>%
   rename(date = date, igpm = `189`) %>%
   arrange(date) %>%
-  mutate(date = floor_date(date, "month")) %>% 
-  filter(date < as.Date('2025-01-01'))
+  mutate(date = floor_date(date, "month")) 
 
 # Criar deflatores ex post (shift -3 e -12 meses)
 # igpm_3m <- igpm_obs %>% mutate(date = date %m-% months(3))
@@ -509,7 +541,8 @@ data_statistic <- data_statistic %>%
 
 
 # length(diff(selic$valor))
-data_statistic$selic <- diff(selic$valor)
+# data_statistic$selic <- diff(selic$valor)
+data_statistic <- data_statistic %>% join_diff(selic, 'valor') %>% dplyr::rename(selic = valor)
 # data_statistic$igpm_3 <- diff(real_igpm_3m$valor)
 # data_statistic$igpm_12 <- diff(real_igpm_12m$valor)
 # data_statistic$ipca_3 <- diff(real_ipca_3m$valor)
@@ -523,32 +556,33 @@ taxa_pt <- g_series(20736, 'pt')
 
 spread_pf <- left_join(taxa_pf, selic, by = "date") %>%
   mutate(valor = pf - valor) %>%
-  dplyr::select(date, valor) %>% 
-  filter(date >= as.Date('2011-12-01'))
+  dplyr::select(date, valor) 
 
 spread_pj <- left_join(taxa_pj, selic, by = "date") %>%
   mutate(valor = pj - valor) %>%
-  dplyr::select(date, valor) %>% 
-  filter(date >= as.Date('2011-12-01'))
+  dplyr::select(date, valor) 
 
 spread_total <- left_join(taxa_pt, selic, by = "date") %>%
   mutate(valor = pt - valor) %>%
-  dplyr::select(date, valor) %>% 
-  filter(date >= as.Date('2011-12-01'))
+  dplyr::select(date, valor) 
 
 #...............................................................................
 # necessidade de redução de obs.. nao tenho dados disponiveis ====
-data_statistic <- data_statistic %>% 
-  filter(date >= as.Date('2012-01-01'))
+# data_statistic <- data_statistic %>% 
+#   filter(date >= as.Date('2012-01-01'))
 #...............................................................................
 
-spread_pf <- diff(spread_pf$valor)
-spread_pj <- diff(spread_pj$valor)
-spread_total <- diff(spread_total$valor)
+# spread_pf <- diff(spread_pf$valor)
+# spread_pj <- diff(spread_pj$valor)
+# spread_total <- diff(spread_total$valor)
 
-data_statistic$spread_pf <- spread_pf
-data_statistic$spread_pj <- spread_pj
-data_statistic$spread_total <- spread_total
+data_statistic <- data_statistic %>% join_diff(spread_pf, 'valor') %>% dplyr::rename(spread_pf = valor)
+data_statistic <- data_statistic %>% join_diff(spread_pj, 'valor') %>% dplyr::rename(spread_pj = valor)
+data_statistic <- data_statistic %>% join_diff(spread_total, 'valor') %>% dplyr::rename(spread_total = valor)
+
+# data_statistic$spread_pf <- spread_pf
+# data_statistic$spread_pj <- spread_pj
+# data_statistic$spread_total <- spread_total
 
 #...............................................................................
 #.......... PREÇOS ====
@@ -561,52 +595,63 @@ igpdi <- get_series(188, start_date = "2012-01-01") %>%
   arrange(date) %>% 
   filter(date < as.Date('2025-01-01'))
 
-data_statistic$igpdi <- igpdi$igpdi
+data_statistic <- data_statistic %>% left_join(igpdi, by='date')
+# data_statistic$igpdi <- igpdi$igpdi
 #...............................................................................
 #.................... IPC-BR ====
 #...............................................................................
 ipcbr <- get_series(189, start_date = "2012-01-01") %>%
-  rename(date = date, igpdi = `189`) %>%
+  rename(date = date, ipcbr = `189`) %>%
   mutate(date = floor_date(date, "month")) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+  arrange(date) 
 
-data_statistic$ipcbr <- ipcbr$igpdi
+data_statistic <- data_statistic %>% left_join(ipcbr, by='date')
+
+# data_statistic$ipcbr <- ipcbr$igpdi
 #...............................................................................
 #.................... IPC-FIPE ====
 #...............................................................................
 ipcfipe <- get_series(190, start_date = "2012-01-01") %>%
-  rename(date = date, igpdi = `190`) %>%
+  rename(date = date, ipcfipe = `190`) %>%
   mutate(date = floor_date(date, "month")) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+  arrange(date) 
 
-data_statistic$ipcfipe <- ipcfipe$igpdi
+data_statistic <- data_statistic %>% left_join(ipcfipe, 'date')
+# data_statistic$ipcfipe <- ipcfipe$igpdi
 #...............................................................................
 #.................... Livres e Adm ====
 #...............................................................................
-data_statistic$p_livre <- data_montly_d$p_livre[data_montly_d$date >= as.Date('2012-01-01')]
-data_statistic$p_admin <- data_montly_d$p_admin[data_montly_d$date >= as.Date('2012-01-01')]
+data_statistic$p_livre <- data_montly_d$p_livre
+data_statistic$p_admin <- data_montly_d$p_admin
 #...............................................................................
 #.......... MONETARIO  ====
 #...............................................................................
 #.................... M1, M2, M3, M4... ====
 #...............................................................................
-m1      <- g_series(27841, "m1") %>% filter(date >= '2011-12-01')
-m2      <- g_series(27842, "m2")%>% filter(date >= '2011-12-01')
-m3      <- g_series(27813, "m3")%>% filter(date >= '2011-12-01')
-m4      <- g_series(27815, "m4")%>% filter(date >= '2011-12-01')
-bm      <- g_series(27807, "base_monetaria")%>% filter(date >= '2011-12-01')
-pmp     <- g_series(27789, "papel_moeda_publico")%>% filter(date >= '2011-12-01')
-depv    <- g_series(27790, "depositos_vista")%>% filter(date >= '2011-12-01')
+m1      <- g_series(27841, "m1") 
+m2      <- g_series(27842, "m2")
+m3      <- g_series(27813, "m3")
+m4      <- g_series(27815, "m4")
+bm      <- g_series(27807, "base_monetaria")
+pmp     <- g_series(27789, "papel_moeda_publico")
+depv    <- g_series(27790, "depositos_vista")
 
-data_statistic$m1 <- diff(m1$m1)
-data_statistic$m2 <- diff(m2$m2)
-data_statistic$m3 <- diff(m3$m3)
-data_statistic$m4 <- diff(m4$m4)
-data_statistic$bm <- diff(bm$base_monetaria)
-data_statistic$pmp <- diff(pmp$papel_moeda_publico)
-data_statistic$depv <- diff(depv$depositos_vista)
+# data_statistic$m1 <- diff(m1$m1)
+# data_statistic$m2 <- diff(m2$m2)
+# data_statistic$m3 <- diff(m3$m3)
+# data_statistic$m4 <- diff(m4$m4)
+# data_statistic$bm <- diff(bm$base_monetaria)
+# data_statistic$pmp <- diff(pmp$papel_moeda_publico)
+# data_statistic$depv <- diff(depv$depositos_vista)
+
+data_statistic <- data_statistic %>% join_diff(m1, 'm1')
+data_statistic <- data_statistic %>% join_diff(m2, 'm2')
+data_statistic <- data_statistic %>% join_diff(m3, 'm3')
+
+data_statistic <- data_statistic %>% join_diff(bm, 'base_monetaria') %>% dplyr::rename(bm = base_monetaria)
+data_statistic <- data_statistic %>% join_diff(pmp, 'papel_moeda_publico') %>% dplyr::rename(pmp = papel_moeda_publico)
+data_statistic <- data_statistic %>% join_diff(depv, 'depositos_vista') %>% dplyr::rename(depv = depositos_vista)
+
 #...............................................................................
 #.......... CHOQUES  ====
 #...............................................................................
@@ -622,13 +667,15 @@ crb <- dbc %>%
   summarise(crb = mean(`DBC.Close`, na.rm = TRUE)) %>%
   filter(date < as.Date('2025-01-01'))
 
-data_statistic$crb <- diff(crb$crb)
+data_statistic <- data_statistic %>% join_diff(crb, 'crb')
+# data_statistic$crb <- diff(crb$crb)
 #...............................................................................
 #.................... GASOLINA ====
 #...............................................................................
 gasolina <- g_series(1393, 'gas') %>% filter(date >= '2011-12-01')
 
-data_statistic$gas <- diff(gasolina$gas)
+data_statistic <- data_statistic %>% join_diff(gasolina, 'gas') 
+# data_statistic$gas <- diff(gasolina$gas)
 #...............................................................................
 #.................... IPA-IPC ====
 #...............................................................................
@@ -639,29 +686,47 @@ ipa_ipc <- tibble(
   valor = (ipa$ipa - ipc$ipc)
 ) %>% filter(date >= '2012-01-01')
 
-data_statistic$ipa_ipc <- ipa_ipc$valor
+
+
+data_statistic <- data_statistic %>% join_diff(ipa_ipc, 'valor') %>% dplyr::rename(ipa_ipc = valor)
+# data_statistic$ipa_ipc <- ipa_ipc$valor
 #...............................................................................
 #.................... OLEO ====
 #...............................................................................
 combustiveis <- g_series(1483, 'oil') %>% filter(date >= '2011-12-01')
-oil <- diff(combustiveis$oil)
-
-data_statistic$oil <- oil
+# oil <- diff(combustiveis$oil)
+data_statistic <- data_statistic %>% join_diff(combustiveis, 'oil')
+# data_statistic$oil <- oil
 #...............................................................................
 #.................... PETROLEO ====
 #...............................................................................
-petroleo <- getSymbols("DCOILWTICO", src = "FRED", from = "2010-01-01", auto.assign = FALSE)
+# petroleo <- getSymbols("DCOILWTICO", src = "FRED", from = "2010-01-01", auto.assign = FALSE)
+# 
+# petroleo <- zoo::fortify.zoo(petroleo)
+# 
+# petroleo <- petroleo %>%
+#   mutate(date = floor_date(Index, "month")) %>%
+#   group_by(date) %>%
+#   summarise(petroleo = mean(DCOILWTICO, na.rm = TRUE)) %>% 
+#   filter(date >= '2011-12-01') %>% 
+#   filter(date < as.Date('2025-01-01'))
+# 
+# data_statistic$petrol <- diff(petroleo$petroleo)
+petroleo <- fredr_series_observations(
+  series_id         = "DCOILWTICO",
+  observation_start = as.Date("2010-01-01"),
+  frequency         = "m"
+) %>%
+  transmute(
+    date      = floor_date(date, "month"),
+    petroleo  = value
+  ) %>%
+  filter(date >= as.Date("2011-12-01"),
+         date <  last_date)
 
-petroleo <- zoo::fortify.zoo(petroleo)
-
-petroleo <- petroleo %>%
-  mutate(date = floor_date(Index, "month")) %>%
-  group_by(date) %>%
-  summarise(petroleo = mean(DCOILWTICO, na.rm = TRUE)) %>% 
-  filter(date >= '2011-12-01') %>% 
-  filter(date < as.Date('2025-01-01'))
-
-data_statistic$petrol <- diff(petroleo$petroleo)
+# 2. Juntar na base e calcular diferenças automaticamente
+data_statistic <- data_statistic %>%
+  join_diff(petroleo, "petroleo")
 
 saveRDS(data_statistic, file = "data/data_statistic.rds")
 

@@ -2,8 +2,7 @@ get_u <- function(){
   # Interpolate u to extend the series
   desemprego <- ipeadata("PNADC12_TDESOC12") %>%
     dplyr::select(date = date, valor = value) %>%
-    mutate(date = as.Date(date)) %>% 
-    filter(date < as.Date("2025-01-01")) 
+    mutate(date = as.Date(date)) 
   
   u <- ipeadata("PAN12_TD12") %>%
     dplyr::select(date = date, u = value) %>%
@@ -17,9 +16,9 @@ get_u <- function(){
   
   new_data <- data.frame(u = u_predict)
   
-  predicoes <- c(predict(fit, newdata = new_data), desemprego$valor)
+  predicoes <- c(stats::predict(fit, newdata = new_data), desemprego$valor)
   
-  u <- tibble(date = seq(as.Date('2002-03-01'), as.Date('2024-12-01'), by = 'm'),
+  u <- tibble(date = seq(as.Date('2002-03-01'), max(desemprego$date), by = 'm'),
               u = predicoes) %>% 
     filter(date >= as.Date("2009-12-01"))
   

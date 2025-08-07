@@ -39,6 +39,7 @@ library(glue)
 library(RColorBrewer)
 library(patchwork)
 library(scales)
+library(fredr)
 
 # FUNCTIONS ====
 source('get_u.R')
