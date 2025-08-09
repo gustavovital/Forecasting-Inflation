@@ -7,6 +7,7 @@ COVID_forecast_t <- readRDS('data/COVID_forecast_df.rds')
 COVID_forecast_c1_t <- readRDS('data/COVID_forecast_c1_t.rds')
 COVID_forecast_c2_t <- readRDS('data/COVID_forecast_c2_t.rds')
 
+
 # WRANGLING DATA - MONTHLY ====
 COVID_compound_m_t_VAR <- COVID_forecast_m_t %>%
   filter(model %in% c('VAR_I', 'VAR_II', 'VAR_III', 'VECM')) %>% 
@@ -111,5 +112,27 @@ COVID_mean_diff <- COVID_compound_diff %>%
 
 COVID_mean_diff$COMPOUND <- 'AVERAGE MODEL'
 COVID_compound_diff <- bind_rows(COVID_compound_diff, COVID_mean_diff)
+
+# get IPCA free prices ====
+common_horizon <- read_rds('data/common_horizon.rds')
+start_forecast <- common_horizon$end %m-% years(1)
+
+ipca <- readRDS("data/COVID_data_quarter_d.rds") %>% 
+  dplyr::select(date, p_livre) %>% 
+  dplyr::filter(date >= start_forecast) %>% 
+  na.omit()
+
+ipca<- tibble(
+       forecast_model = 'Free Prices',
+       date = ipca$date,
+       mean = ipca$p_livre,
+       lower_95 = NA,
+       upper_95 = NA,
+       lower_80 = NA,
+       upper_80 = NA,
+       COMPOUND = 'Free Prices'
+       )
+
+COVID_compound_diff <- bind_rows(COVID_compound_diff, ipca)
 
 saveRDS(COVID_compound_diff, file = "data/COVID_forecast_compound_diff.rds")

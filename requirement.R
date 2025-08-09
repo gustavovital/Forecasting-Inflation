@@ -40,6 +40,7 @@ library(RColorBrewer)
 library(patchwork)
 library(scales)
 library(fredr)
+library(ggthemes)
 
 # FUNCTIONS ====
 source('get_u.R')
