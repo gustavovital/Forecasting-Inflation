@@ -5,6 +5,7 @@ setwd('/Users/gustavovital/Documents/GitHub/Forecasting-Inflation')
 source('requirement.R')
 source('get_data.R')
 source('covid_get_data.R')
+source('commom_horizon.R')
 
 # ESTIMATE VARS MODELS (COVID) ====
 source('covid_VAR_montly_oos.R')

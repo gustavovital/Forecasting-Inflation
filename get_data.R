@@ -18,7 +18,7 @@ safe_diff <- function(x, lag = 1) {
 join_diff <- function(base, serie_df, var_name, lag = 1) {
   diff_col <- serie_df %>%
     arrange(date) %>%
-    mutate(!!paste0(var_name, "_diff") := safe_diff(.data[[var_name]], lag = lag)) %>%
+    mutate(!!paste0(var_name) := safe_diff(.data[[var_name]], lag = lag)) %>%
     dplyr::select(date, !!paste0(var_name))
   base %>% left_join(diff_col, by = "date")
 }
@@ -56,7 +56,7 @@ data_montly_d <- data_montly_d %>%
 #.......... Expectations ====
 #...............................................................................
 source('get_expectations.R')
-exp <- exp
+# exp <- exp
 
 #...............................................................................
 #.......... Exchange Rate BRL/US$ ====
@@ -282,8 +282,8 @@ tb3m <- fredr_series_observations(
 
 risco <- selic %>%
   left_join(tb3m, by = "date") %>%
-  mutate(valor = (valor - us3m) * 100) %>%
-  dplyr::select(date, valor)
+  mutate(embi = (valor - us3m) * 100) %>%
+  dplyr::select(date, embi)
 
 risco_T <- to_quarterly(risco, valor)
 # data_quarter_d$embi <- risco_T$valor
