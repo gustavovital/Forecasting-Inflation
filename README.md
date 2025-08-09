@@ -1,46 +1,62 @@
-# Forecasting Brazilian Inflation Dynamics  
-**A Time Series Framework for Statistical and Structural Modeling**
+# Forecasting Inflation in Brazil
 
-This repository provides a comprehensive framework for short-term inflation forecasting in Brazil, combining statistical factor-augmented models and economically motivated vector autoregressions. The modeling architecture reflects the structure of institutional forecasting systems and is designed for transparency, robustness, and empirical rigor.
-
----
-
-## Project Scope
-
-The project implements and compares distinct classes of inflation forecasting models using a consistent empirical environment. The objective is to evaluate the predictive performance of alternative model structures across horizons, forecast origins, and variable groupings. Forecasts are generated for both headline IPCA inflation and its decomposition into regulated and free prices.
+This repository contains the code, data, and methodology for forecasting Brazilian inflation, with a particular focus on **free prices** using time series econometric models.  
+The approach is inspired by the methodology presented in *Box 2.1 – Inflation Report* from the **Central Bank of Brazil**, and adapted to quarterly and monthly datasets.
 
 ---
 
-## Model Classes
+## 📊 Project Overview
 
-### Statistical Models
+The project estimates multiple classes of forecasting models, including:
 
-Statistical models are based on factor-augmented vector autoregressions (FAVARs). These models reduce dimensionality by extracting principal components from thematic blocks of macroeconomic indicators. Two specifications are implemented:
-
-- **Class I:** Models organized around six fixed thematic groups (activity, external, financial, price, monetary, and shock variables). Forecasts are generated across all combinations of strategy, lag order, and forecast origin.
+- **Class I Statistical VAR Models**:  
+  Factor-augmented VARs built from thematic macroeconomic indicator groups, with principal components extracted at the subgroup level.
   
-- **Class II:** Models constructed from all possible combinations of three out of the six thematic groups, allowing for more targeted information sets. Each model is estimated at multiple lag orders and factor strategies, generating 1,440 models per forecast origin.
+- **Class II Statistical VAR Models**:  
+  VARs combining three thematic groups at a time, exploring different factor extraction strategies.
 
-### Economic Models
+- **Economic VAR, BVAR, and VECM Models**:  
+  Benchmarks including Bayesian VARs and cointegration-based specifications.
 
-Economic models are specified as traditional vector autoregressions using a small set of macroeconomic variables selected for theoretical relevance. These models include observable indicators such as interest rates, inflation expectations, exchange rates, and activity variables, and are estimated at both monthly and quarterly frequencies.
-
-### Forecast Combination Models
-
-In addition to individual model forecasts, the framework includes combined forecasts obtained by aggregating predictions from different models. These are used to assess whether combining across specifications improves accuracy or stability, especially under model uncertainty.
+The main forecasting target is **quarterly compounded free prices inflation** (`p_livre`), and all predictions are evaluated against observed data.
 
 ---
 
-## Forecasting Strategy
+## 🔍 Methodology
 
-- Forecasts are generated recursively using expanding windows, simulating real-time conditions.
-- Multiple forecast horizons are evaluated (one quarter, two quarters, and one year ahead).
-- Both point forecasts and full predictive intervals (80% and 95%) are stored for evaluation.
+1. **Data Preparation**  
+   - Macroeconomic indicators collected from multiple official sources.
+   - Series transformed, seasonally adjusted (when necessary), and aligned on a common observation horizon.
+   - COVID dummy (`D_COVID`) included as an exogenous regressor.
+
+2. **Model Estimation**  
+   - Rolling-window out-of-sample forecasts to capture evolving dynamics.
+   - Forecast horizons: up to **12 months ahead**.
+   - Confidence and credible intervals at 80% and 95%.
+
+3. **Forecast Evaluation**  
+   - Comparison between observed and predicted free prices.
+   - Visualization with shaded bands for uncertainty.
 
 ---
 
-## Evaluation and Outputs
+## 📈 Example Output
 
-- Forecasts are compared against observed values using standard forecast evaluation criteria.
-- Tabular outputs include point predictions, uncertainty bounds, and accuracy statistics across all models and horizons.
-- All forecasts are organized for integration into reports, figures, or further statistical analysis.
+<p align="center">
+  <img src="figures/forecast.jpeg" alt="Observed vs Forecasting Model" width="600"/>
+</p>
+
+*Figure: Observed Free Prices vs. Forecasting Model with 80% and 95% forecast bands.*
+
+---
+
+## 📂 Repository Structure
+
+```plaintext
+.
+├── data/                
+├── scripts/             
+├── figures/             
+├── results/             
+├── requirement.R        
+└── README.md            
