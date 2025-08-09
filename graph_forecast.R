@@ -1,0 +1,53 @@
+plot_df <- plot_df %>%
+  mutate(COMPOUND = recode(COMPOUND,
+                           "AVERAGE MODEL" = "Forecasting Model",
+                           "Free Prices"   = "Observed Free Prices"))
+
+bands <- bands %>%
+  mutate(COMPOUND = recode(COMPOUND,
+                           "AVERAGE MODEL" = "Forecasting Model",
+                           "Free Prices"   = "Observed Free Prices"))
+
+ggplot() +
+  geom_ribbon(data = bands,
+              aes(x = date, ymin = lower_95, ymax = upper_95, fill = COMPOUND),
+              alpha = 0.15, colour = NA) +
+  geom_ribbon(data = bands,
+              aes(x = date, ymin = lower_80, ymax = upper_80, fill = COMPOUND),
+              alpha = 0.25, colour = NA) +
+  geom_line(data = plot_df,
+            aes(x = date, y = mean, color = COMPOUND, linetype = COMPOUND, group = COMPOUND),
+            linewidth = .6) +
+  geom_point(data = subset(plot_df, COMPOUND == "Observed Free Prices"),
+             aes(x = date, y = mean, color = COMPOUND),
+             size = 1.8) +
+  scale_x_date(date_breaks = "3 months", date_labels = "%b\n%Y",
+               expand = expansion(mult = c(.01, .02))) +
+  scale_y_continuous(labels = label_number(accuracy = 0.1)) +
+  scale_color_economist(name = NULL) +
+  scale_fill_economist(guide = "none") +
+  scale_linetype_manual(values = c(
+    "Forecasting Model" = "dashed",
+    "Observed Free Prices" = "solid"
+  )) +
+  labs(
+    title = "Observed Free Prices vs. Forecasting Model",
+    subtitle = "Quarterly compounded rates; 80% and 95% forecast bands for Forecasting Model",
+    x = NULL, y = "Percent",
+    caption = "Shaded areas: 80% and 95% credible intervals. Points denote observed Free Prices."
+  ) +
+  theme_economist_white(base_size = 9) +
+  theme(
+    legend.position = "bottom",
+    legend.text = element_text(size = 8),
+    panel.grid.minor = element_blank(),
+    axis.text = element_text(size = 8),
+    axis.title = element_text(size = 9, margin = margin(r = 9)),
+    plot.title = element_text(size = 12, face = "bold"),
+    plot.subtitle = element_text(size = 9),
+    plot.caption = element_text(size = 8)
+  ) + guides(
+    fill     = "none",
+    color    = guide_legend(title = NULL),
+    linetype = guide_legend(title = NULL)
+  )

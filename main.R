@@ -20,3 +20,4 @@ source('covid_VAR_compound.R')
 
 # RESULTS ====
 source('results.R')
+source('graph_forecast.R')

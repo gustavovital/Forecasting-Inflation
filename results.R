@@ -1,7 +1,9 @@
 rm(list = ls())
 source('requirement.R')
 
-COVID_forecast_compound_ipca <- readRDS('data/COVID_forecast_compound_ipca.rds')
+COVID_forecast_compound_ipca <- readRDS('data/COVID_forecast_compound_diff.rds')
+common_horizon <- read_rds('data/common_horizon.rds')
+start_forecast <- common_horizon$end %m-% years(1)
 
 plot_forecast_error <- function(data, lags, compound) {
   
@@ -125,3 +127,25 @@ for(forecast in c(1,2,4)){
   plot((ci_p + cii_p) / (vm_p + bv_m_p) / (vq_p + bv_q_p) / av_p)
 
 }
+
+COVID_forecast_compound_ipca %>% 
+  filter(COMPOUND %in% c('Free Prices', 'AVERAGE MODEL'),
+         forecast_model %in% c('Free Prices', 'VI')) %>% 
+  bind_rows(tibble(
+    forecast_model = max(COVID_forecast_compound_ipca$forecast_model),
+    date = dplyr::last(COVID_forecast_compound_ipca$date[COVID_forecast_compound_ipca$COMPOUND == 'Free Prices']),
+    mean = dplyr::last(COVID_forecast_compound_ipca$mean[COVID_forecast_compound_ipca$COMPOUND == 'Free Prices']),
+    lower_95 = dplyr::last(COVID_forecast_compound_ipca$mean[COVID_forecast_compound_ipca$COMPOUND == 'Free Prices']),
+    upper_95 = dplyr::last(COVID_forecast_compound_ipca$mean[COVID_forecast_compound_ipca$COMPOUND == 'Free Prices']),
+    lower_80 = dplyr::last(COVID_forecast_compound_ipca$mean[COVID_forecast_compound_ipca$COMPOUND == 'Free Prices']),
+    upper_80 = dplyr::last(COVID_forecast_compound_ipca$mean[COVID_forecast_compound_ipca$COMPOUND == 'Free Prices']),
+    COMPOUND = 'AVERAGE MODEL')) %>% 
+  ggplot(aes(date, color = COMPOUND)) + 
+  geom_line(aes(y=mean)) +
+  geom_ribbon(aes(ymin = lower_95, ymax = upper_95, fill = COMPOUND), 
+              alpha = 0.15, linetype = 0) +
+  geom_ribbon(aes(ymin = lower_80, ymax = upper_80, fill = COMPOUND), 
+              alpha = 0.25, linetype = 0) 
+
+
+
