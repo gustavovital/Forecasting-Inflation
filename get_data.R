@@ -643,6 +643,7 @@ depv    <- g_series(27790, "depositos_vista")
 data_statistic <- data_statistic %>% join_diff(m1, 'm1')
 data_statistic <- data_statistic %>% join_diff(m2, 'm2')
 data_statistic <- data_statistic %>% join_diff(m3, 'm3')
+data_statistic <- data_statistic %>% join_diff(m4, 'm4')
 
 data_statistic <- data_statistic %>% join_diff(bm, 'base_monetaria') %>% dplyr::rename(bm = base_monetaria)
 data_statistic <- data_statistic %>% join_diff(pmp, 'papel_moeda_publico') %>% dplyr::rename(pmp = papel_moeda_publico)
@@ -714,14 +715,14 @@ petroleo <- fredr_series_observations(
 ) %>%
   transmute(
     date      = floor_date(date, "month"),
-    petroleo  = value
+    petrol  = value
   ) %>%
   filter(date >= as.Date("2011-12-01"),
          date <  last_date)
 
 # 2. Juntar na base e calcular diferenças automaticamente
 data_statistic <- data_statistic %>%
-  join_diff(petroleo, "petroleo")
+  join_diff(petroleo, "petrol")
 
 saveRDS(data_statistic, file = "data/data_statistic.rds")
 

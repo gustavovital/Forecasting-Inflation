@@ -55,8 +55,9 @@ plot_forecast_error <- function(data, lags, compound) {
   FPCP <- bind_rows(
     FP %>% mutate(COMPOUND = "Free Prices"),
     CP %>% mutate(COMPOUND = compound)
-  ) %>% 
-    dplyr::filter(date <= as.Date('2025-01-01')) 
+  ) 
+  #  %>% 
+  #   dplyr::filter(date <= as.Date('2025-01-01')) 
   
   
   if(nrow(FPCP) > 0) {

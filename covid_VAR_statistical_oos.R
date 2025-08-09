@@ -2,12 +2,16 @@ rm(list = ls())
 
 source('requirement.R')
 
+common_horizon <- read_rds('data/common_horizon.rds')
+start_forecast <- common_horizon$end %m-% years(1)
+end_forecast <- common_horizon$end %m+% months(3)
+
 # GET DATA ----
 COVID_data_statistic <- readRDS("data/COVID_data_statistic.rds")
-COVID_data_statistic <- COVID_data_statistic %>% filter(date >= as.Date("2012-01-01"))
+COVID_data_statistic <- COVID_data_statistic %>% filter(date >= common_horizon$start & date <= common_horizon$end)
 
 # SETUP MODELS ----
-forecast_starts <- seq(as.Date("2023-01-01"), as.Date("2025-01-01"), by = "quarter")
+forecast_starts <- seq(as.Date(start_forecast), as.Date(end_forecast), by = "q")
 h <- 12  
 
 strategies <- c("PC1", "PC2", "PC1_PC2", "COMBO")
@@ -54,7 +58,7 @@ forecast_stat_class2 <- list()
 # FORECAST - CLASS I ----
 forecast_count <- 1
 for (start in forecast_starts) {
-  end <- as.Date(start) %m-% months(1)
+  end <- start_forecast
   df_train <- COVID_data_statistic %>% filter(date <= end)
   model_id <- 1
   forecast_model_id <- as.character(as.roman(forecast_count))
@@ -102,8 +106,8 @@ for (start in forecast_starts) {
                   model <- try(VAR(X, p = lag, type = "const", exogen = exog), silent = TRUE)
                   if (!inherits(model, "try-error")) {
                     
-                    fc_95 <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
-                    fc_80 <- try(predict(model, n.ahead = h, ci = 0.80, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
+                    fc_95 <- try(stats::predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
+                    fc_80 <- try(stats::predict(model, n.ahead = h, ci = 0.80, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
                     
                     if (!inherits(fc_95, "try-error") && !inherits(fc_80, "try-error")) {
                       fc_mat_95 <- fc_95$fcst$p_livre
@@ -173,7 +177,7 @@ forecast_count <- 1
 
 # FORECAST - CLASS II
 for (start in forecast_starts) {
-  end <- as.Date(start) %m-% months(1)
+  end <- start_forecast
   df_train <- COVID_data_statistic %>% filter(date <= end)
   model_id <- 1
   forecast_model_id <- as.character(as.roman(forecast_count))
@@ -210,8 +214,8 @@ for (start in forecast_starts) {
         model <- try(VAR(X, p = lag, type = "const", exogen = exog), silent = TRUE)
         if (!inherits(model, "try-error")) {
           
-          fc_95 <- try(predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
-          fc_80 <- try(predict(model, n.ahead = h, ci = 0.80, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
+          fc_95 <- try(stats::predict(model, n.ahead = h, ci = 0.95, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
+          fc_80 <- try(stats::predict(model, n.ahead = h, ci = 0.80, dumvar = matrix(0, nrow = h, ncol = 1, dimnames = list(NULL, "D_COVID"))), silent = TRUE)
           
           if (!inherits(fc_95, "try-error") && !inherits(fc_80, "try-error")) {
             fc_mat_95 <- fc_95$fcst$p_livre
