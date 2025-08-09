@@ -339,8 +339,7 @@ data_statistic <- data_statistic %>% join_diff(ibcbr, 'ibcbr')
 uci <- ipeadata("CNI12_NUCAPD12") %>%
   dplyr::select(date = date, valor = value) %>%
   mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2009-12-01")) %>% 
-  filter(date < as.Date("2025-01-01")) 
+  filter(date >= as.Date("2009-12-01")) 
 
 # data_statistic$uci <- diff(uci$valor)
 data_statistic <- data_statistic %>% join_diff(uci, 'valor') %>% dplyr::rename(uci = valor)
@@ -444,8 +443,7 @@ data_statistic <- data_statistic %>%
 quantum_exp <- ipeadata("FUNCEX12_XQT12") %>%
   dplyr::select(date = date, valor = value) %>%
   mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2009-12-01")) %>% 
-  filter(date < as.Date('2025-01-01'))
+  filter(date >= as.Date("2009-12-01")) 
 
 data_statistic <- data_statistic %>% join_diff(quantum_exp, 'valor') %>% dplyr::rename(quantum_x = valor)
 # data_statistic$quantum_x <- diff(quantum_exp$valor)
@@ -455,8 +453,7 @@ data_statistic <- data_statistic %>% join_diff(quantum_exp, 'valor') %>% dplyr::
 quantum_imp <- ipeadata("FUNCEX12_MDQT12") %>%
   dplyr::select(date = date, valor = value) %>%
   mutate(date = as.Date(date)) %>%
-  filter(date >= as.Date("2009-12-01")) %>% 
-  filter(date < as.Date('2025-01-01'))
+  filter(date >= as.Date("2009-12-01"))
 
 data_statistic <- data_statistic %>% join_diff(quantum_imp, 'valor') %>% dplyr::rename(quantum_m = valor)
 # data_statistic$quantum_m <- diff(quantum_imp$valor)
@@ -592,8 +589,7 @@ data_statistic <- data_statistic %>% join_diff(spread_total, 'valor') %>% dplyr:
 igpdi <- get_series(188, start_date = "2012-01-01") %>%
   rename(date = date, igpdi = `188`) %>%
   mutate(date = floor_date(date, "month")) %>%
-  arrange(date) %>% 
-  filter(date < as.Date('2025-01-01'))
+  arrange(date) 
 
 data_statistic <- data_statistic %>% left_join(igpdi, by='date')
 # data_statistic$igpdi <- igpdi$igpdi
@@ -664,8 +660,7 @@ dbc <- zoo::fortify.zoo(dbc)
 crb <- dbc %>% 
   mutate(date = floor_date(Index, "month")) %>%
   group_by(date) %>%
-  summarise(crb = mean(`DBC.Close`, na.rm = TRUE)) %>%
-  filter(date < as.Date('2025-01-01'))
+  summarise(crb = mean(`DBC.Close`, na.rm = TRUE)) 
 
 data_statistic <- data_statistic %>% join_diff(crb, 'crb')
 # data_statistic$crb <- diff(crb$crb)

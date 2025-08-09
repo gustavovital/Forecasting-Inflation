@@ -2,12 +2,16 @@ rm(list = ls())
 
 source('requirement.R')
 
+common_horizon <- read_rds('data/common_horizon.rds')
+start_forecast <- common_horizon$end %m-% years(1)
+end_forecast <- common_horizon$end %m+% months(3)
+
 # GET DATA ----
 COVID_data_montly_d <- readRDS("data/COVID_data_montly_d.rds")
 COVID_data_montly_l <- readRDS("data/COVID_data_montly_l.rds")
 
-COVID_data_montly_d <- COVID_data_montly_d %>% filter(date >= as.Date("2012-01-01"))
-COVID_data_montly_l <- COVID_data_montly_l %>% filter(date >= as.Date("2012-01-01"))
+COVID_data_montly_d <- COVID_data_montly_d %>% filter(date >= common_horizon$start & date <= common_horizon$end)
+COVID_data_montly_l <- COVID_data_montly_l %>% filter(date >= common_horizon$start & date <= common_horizon$end)
 
 # SETUP MODELS ----
 var_model_vars <- list(
@@ -30,15 +34,16 @@ var_model_lags <- list(
   VECM      = 1
 )
 
-forecast_starts <- seq(as.Date("2023-01-01"), as.Date("2025-01-01"), by = "q")
+forecast_starts <- seq(as.Date(start_forecast), as.Date(end_forecast), by = "q")
 forecast_df <- tibble()
 
 # FORECAST ----
 for (i in seq_along(forecast_starts)) {
   
   forecast_model_id <- as.character(as.roman(i))
-  start_date <- as.Date("2012-01-01")
-  end_date <- forecast_starts[i] %m-% months(1)
+  # start_date <- common_horizon$start
+  start_date <- common_horizon$start
+  end_date <- start_forecast
   train_d <- COVID_data_montly_d %>% filter(date >= start_date & date <= end_date)
   train_l <- COVID_data_montly_l %>% filter(date >= start_date & date <= end_date)
   
@@ -54,10 +59,10 @@ for (i in seq_along(forecast_starts)) {
       var_model <- VAR(Y, p = var_model_lags[[vars]], type = "const", exogen = X)
       exog_fcst <- matrix(0, nrow = 12, ncol = 1)
       colnames(exog_fcst) <- "D_COVID"
-      forecast_var <- predict(var_model, n.ahead = 12, ci = 0.95, dumvar = exog_fcst)
+      forecast_var <- stats::predict(var_model, n.ahead = 12, ci = 0.95, dumvar = exog_fcst)
       
-      forecast_95 <- predict(var_model, n.ahead = 12, ci = 0.95, dumvar = exog_fcst)
-      forecast_80 <- predict(var_model, n.ahead = 12, ci = 0.80, dumvar = exog_fcst)
+      forecast_95 <- stats::predict(var_model, n.ahead = 12, ci = 0.95, dumvar = exog_fcst)
+      forecast_80 <- stats::predict(var_model, n.ahead = 12, ci = 0.80, dumvar = exog_fcst)
       
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
@@ -84,7 +89,7 @@ for (i in seq_along(forecast_starts)) {
       X_exog <- X_exog[common_rows, , drop = FALSE]
       
       coef_prior <- sapply(colnames(Y), function(name) {
-        as.numeric(arima(Y[, name], order = c(1, 0, 0))$coef[1])
+        as.numeric(arima(Y[, name], order = c(1, 0, 0), method = 'ML')$coef[1])
       })
       
       bvar_model <- new(bvarm)
@@ -144,10 +149,10 @@ for (i in seq_along(forecast_starts)) {
       X_future <- matrix(0, nrow = 12, ncol = 1)
       colnames(X_future) <- "D_COVID"
       
-      forecast_vec <- predict(vec2var_model, n.ahead = 12, ci = 0.95, dumvar = X_future)
+      forecast_vec <- stats::predict(vec2var_model, n.ahead = 12, ci = 0.95, dumvar = X_future)
       
-      forecast_95 <- predict(vec2var_model, n.ahead = 12, ci = 0.95, dumvar = X_future)
-      forecast_80 <- predict(vec2var_model, n.ahead = 12, ci = 0.80, dumvar = X_future)
+      forecast_95 <- stats::predict(vec2var_model, n.ahead = 12, ci = 0.95, dumvar = X_future)
+      forecast_80 <- stats::predict(vec2var_model, n.ahead = 12, ci = 0.80, dumvar = X_future)
       
       last_obs <- tail(train_l$p_livre, 1)
       fc_tmp <- tibble(
