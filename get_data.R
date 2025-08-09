@@ -285,7 +285,7 @@ risco <- selic %>%
   mutate(embi = (valor - us3m) * 100) %>%
   dplyr::select(date, embi)
 
-risco_T <- to_quarterly(risco, valor)
+risco_T <- to_quarterly(risco, embi)
 # data_quarter_d$embi <- risco_T$valor
 data_quarter_d <- data_quarter_d %>% left_join(risco_T, by='date')
 

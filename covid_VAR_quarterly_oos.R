@@ -2,11 +2,15 @@ rm(list = ls())
 
 source('requirement.R')
 
+common_horizon <- read_rds('data/common_horizon.rds')
+start_forecast <- common_horizon$end %m-% years(1)
+end_forecast <- common_horizon$end %m+% months(3)
+
 # GET DATA ----
-COVID_data_quarter_d <- readRDS("data/COVID_data_quarter_d.rds") %>%
-  filter(date >= as.Date("2012-01-01"))
-COVID_data_quarter_l <- readRDS("data/COVID_data_quarter_l.rds") %>%
-  filter(date >= as.Date("2012-01-01"))
+COVID_data_quarter_d <- readRDS("data/COVID_data_quarter_d.rds") 
+COVID_data_quarter_l <- readRDS("data/COVID_data_quarter_l.rds") 
+COVID_data_quarter_d <- COVID_data_quarter_d %>% filter(date >= common_horizon$start & date <= common_horizon$end)
+COVID_data_quarter_l <- COVID_data_quarter_d %>% filter(date >= common_horizon$start & date <= common_horizon$end)
 
 # SETUP MODELS ----
 var_model_vars <- list(
@@ -29,14 +33,16 @@ var_model_lags <- list(
   VECM      = 2
 )
 
-forecast_starts <- seq(as.Date("2023-01-01"), as.Date("2025-03-01"), by = "quarter")
+forecast_starts <- seq(as.Date(start_forecast), as.Date(end_forecast), by = "q")
 forecast_df <- tibble()
 
 # FORECAST ----
 for (i in seq_along(forecast_starts)) {
+  
   forecast_model_id <- as.character(as.roman(i))
-  start_date <- as.Date("2012-01-01")
-  end_date <- forecast_starts[i] %m-% months(3)
+  # start_date <- common_horizon$start
+  start_date <- common_horizon$start
+  end_date <- start_forecast
   train_d <- COVID_data_quarter_d %>% filter(date >= start_date & date <= end_date)
   train_l <- COVID_data_quarter_l %>% filter(date >= start_date & date <= end_date)
   
@@ -54,8 +60,8 @@ for (i in seq_along(forecast_starts)) {
       colnames(exog_fcst) <- "D_COVID"
       
       
-      forecast_95 <- predict(var_model, n.ahead = 4, ci = 0.95, dumvar = exog_fcst)
-      forecast_80 <- predict(var_model, n.ahead = 4, ci = 0.80, dumvar = exog_fcst)
+      forecast_95 <- stats::predict(var_model, n.ahead = 4, ci = 0.95, dumvar = exog_fcst)
+      forecast_80 <- stats::predict(var_model, n.ahead = 4, ci = 0.80, dumvar = exog_fcst)
       
       fc_tmp <- tibble(
         forecast_model = forecast_model_id,
@@ -124,8 +130,8 @@ for (i in seq_along(forecast_starts)) {
       vec2var_model <- vec2var(jotest, r = 2)
       
       
-      forecast_95 <- predict(vec2var_model, n.ahead = 4, ci = 0.95, dumvar = matrix(0, nrow = 4, ncol = 1, dimnames = list(NULL, "D_COVID")))
-      forecast_80 <- predict(vec2var_model, n.ahead = 4, ci = 0.80, dumvar = matrix(0, nrow = 4, ncol = 1, dimnames = list(NULL, "D_COVID")))
+      forecast_95 <- stats::predict(vec2var_model, n.ahead = 4, ci = 0.95, dumvar = matrix(0, nrow = 4, ncol = 1, dimnames = list(NULL, "D_COVID")))
+      forecast_80 <- stats::predict(vec2var_model, n.ahead = 4, ci = 0.80, dumvar = matrix(0, nrow = 4, ncol = 1, dimnames = list(NULL, "D_COVID")))
       
       last_obs <- tail(train_l$p_livre, 1)
       fc_tmp <- tibble(
